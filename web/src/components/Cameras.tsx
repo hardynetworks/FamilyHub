@@ -54,20 +54,20 @@ export function Snapshot({ cameraId, seconds, hq = false, className }: { cameraI
 }
 
 /** Live video via the go2rtc player (MSE over a WebSocket proxied by FamilyHub). */
-export function LiveVideo({ cameraId, className }: { cameraId: string; className?: string }) {
+export function LiveVideo({ cameraId, className, size = 'full' }: { cameraId: string; className?: string; size?: 'tile' | 'full' }) {
   const [player, setPlayer] = useState<string | null>(null);
   const [error, setError] = useState('');
   useEffect(() => {
     let cancelled = false;
     setPlayer(null);
     setError('');
-    api<{ player: string }>(`/cameras/${encodeURIComponent(cameraId)}/live`, 'POST')
+    api<{ player: string }>(`/cameras/${encodeURIComponent(cameraId)}/live`, 'POST', { size })
       .then((r) => !cancelled && setPlayer(r.player))
       .catch((e) => !cancelled && setError(e.message));
     return () => {
       cancelled = true;
     };
-  }, [cameraId]);
+  }, [cameraId, size]);
   if (error) return <div className={`cam-placeholder ${className ?? ''}`}>{error}</div>;
   if (!player) return <div className={`cam-placeholder ${className ?? ''}`}>Connecting…</div>;
   return <iframe className={`cam-live ${className ?? ''}`} src={player} title="Live camera" allow="autoplay; fullscreen" />;
@@ -92,7 +92,7 @@ export function CamerasCard({ fill = false }: { fill?: boolean } = {}) {
       <div className={`cam-grid ${fill ? 'widget-scroll' : ''}`}>
         {data.cameras.map((c) => (
           <button key={c.id} className="cam-tile" onClick={() => setOpen(c.id)} title={`Open ${c.name}`}>
-            {live ? <LiveVideo cameraId={c.id} className="cam-media" /> : <Snapshot cameraId={c.id} seconds={data.snapshotSeconds} className="cam-media" />}
+            {live ? <LiveVideo cameraId={c.id} className="cam-media" size="tile" /> : <Snapshot cameraId={c.id} seconds={data.snapshotSeconds} className="cam-media" />}
             <span className="cam-label">
               {c.state !== 'CONNECTED' && <span className="cam-offline">Offline · </span>}
               {c.name}
@@ -138,7 +138,7 @@ export function CameraFullscreen({
   }, [onClose]);
   return (
     <div className="cam-full" role="dialog" aria-label={name}>
-      <div className="cam-full-media">{live ? <LiveVideo cameraId={cameraId} /> : <Snapshot cameraId={cameraId} seconds={Math.min(snapshotSeconds, 2)} hq />}</div>
+      <div className="cam-full-media">{live ? <LiveVideo cameraId={cameraId} size="full" /> : <Snapshot cameraId={cameraId} seconds={Math.min(snapshotSeconds, 2)} hq />}</div>
       <div className="cam-full-bar">
         <div>
           {banner && <div className="cam-full-banner">{banner}</div>}

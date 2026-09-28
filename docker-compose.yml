@@ -26,6 +26,11 @@ services:
     restart: unless-stopped
     volumes:
       - familyhub-go2rtc:/config
+    # WebRTC media only (low-latency live video). The go2rtc API (1984) stays private.
+    # Change the left side (and Settings -> Cameras -> WebRTC port) if 8555 is taken.
+    ports:
+      - "${WEBRTC_PORT:-8555}:8555/tcp"
+      - "${WEBRTC_PORT:-8555}:8555/udp"
 
   db:
     image: postgres:16-alpine

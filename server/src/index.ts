@@ -22,7 +22,7 @@ import { weatherRouter } from './routes/weather';
 import { homeRouter } from './routes/home';
 import { camerasRouter, go2rtcRouter } from './routes/cameras';
 import { attachGo2rtcProxy } from './go2rtcProxy';
-import { startEvents } from './protect';
+import { startEvents, startLiveVideoManager } from './protect';
 import { errorHandler } from './util';
 
 async function main() {
@@ -108,6 +108,7 @@ async function main() {
   });
   attachGo2rtcProxy(server, sessionMiddleware);
   startEvents();
+  startLiveVideoManager();
   startSyncLoop();
 }
 

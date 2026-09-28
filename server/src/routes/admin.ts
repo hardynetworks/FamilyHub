@@ -5,7 +5,7 @@ import { baseUrl, config, isValidTimezone } from '../config';
 import { testGoogleCredentials } from '../google';
 import { getPhotos, immichAlbums } from '../photos';
 import { searchLocations } from '../weather';
-import { go2rtcReachable, listCameras } from '../protect';
+import { applyGo2rtcConfig, go2rtcReachable, listCameras, webrtcConfig } from '../protect';
 import { SETTING_KEYS, SettingKey, describeSettings, getSetting, isLockedByEnv, saveSettings } from '../settings';
 import { HttpError, parse } from '../util';
 
@@ -118,6 +118,17 @@ const Patch = z
     doorbellPopupEnabled: z.boolean().nullable().optional(),
     doorbellPopupSeconds: z.number().int().min(5).max(300).nullable().optional(),
     familyName: str(80),
+    camerasTileQuality: z.enum(['high', 'medium', 'low']).nullable().optional(),
+    camerasPreload: z.enum(['off', 'tiles', 'all']).nullable().optional(),
+    webrtcMode: z.enum(['off', 'lan']).nullable().optional(),
+    webrtcLanAddress: z
+      .string()
+      .trim()
+      .max(253)
+      .refine((v) => v === '' || /^[A-Za-z0-9.-]+$/.test(v) || /^[0-9a-fA-F:]+$/.test(v), 'enter an IP address or hostname, without http:// or a port')
+      .nullable()
+      .optional(),
+    webrtcPort: z.number().int().min(1024).max(65535).nullable().optional(),
   })
   .strict();
 
@@ -234,4 +245,17 @@ adminRouter.post('/protect/test', async (req, res) => {
   } catch (e: any) {
     res.json({ ok: false, cameras: [], go2rtc, message: e.message });
   }
+});
+
+/** Push the WebRTC addresses to go2rtc now and report the result (used by "Apply to video relay"). */
+adminRouter.post('/protect/webrtc/apply', async (_req, res) => {
+  const w = webrtcConfig();
+  const r = await applyGo2rtcConfig();
+  if (r.error) return res.json({ ok: false, message: `Could not update the video relay: ${r.error}` });
+  res.json({
+    ok: true,
+    message: w.enabled
+      ? `WebRTC is on for ${w.candidates.join(', ')}${r.changed ? ' (video relay restarted)' : ''}. Make sure port ${w.port} (TCP and UDP) is reachable on the server.`
+      : `WebRTC is off; cameras use MSE streaming${r.changed ? ' (video relay restarted)' : ''}.`,
+  });
 });

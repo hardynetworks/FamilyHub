@@ -173,20 +173,65 @@ export function AppSettings({ section }: { section: AppSection }) {
             { key: 'camerasSelected', label: 'Cameras', kind: 'custom' },
             { key: 'camerasSnapshotSeconds', label: 'Refresh snapshots every (seconds)', kind: 'number' },
             {
-              key: 'camerasLiveQuality',
-              label: 'Live video quality',
+              key: 'camerasTileQuality',
+              label: 'Quality for small tiles on Home',
               kind: 'select',
               options: [
-                { value: 'medium', label: 'Medium (recommended for tablets)' },
+                { value: 'low', label: 'Low (recommended: fastest, least data)' },
+                { value: 'medium', label: 'Medium' },
                 { value: 'high', label: 'High' },
+              ],
+            },
+            {
+              key: 'camerasLiveQuality',
+              label: 'Quality when a camera is full screen',
+              kind: 'select',
+              options: [
+                { value: 'high', label: 'High (recommended)' },
+                { value: 'medium', label: 'Medium' },
                 { value: 'low', label: 'Low' },
               ],
             },
+            {
+              key: 'camerasPreload',
+              label: 'Keep cameras ready in the background',
+              kind: 'select',
+              options: [
+                { value: 'tiles', label: 'Tile streams (recommended)' },
+                { value: 'all', label: 'Tile and full-screen streams' },
+                { value: 'off', label: 'Off: connect only when someone watches' },
+              ],
+              hint: 'Keeps the video relay connected to your cameras around the clock, so live video starts almost instantly. Uses a little constant bandwidth on your home network, with no transcoding.',
+            },
+            {
+              key: 'webrtcMode',
+              label: 'Low-latency video (WebRTC)',
+              kind: 'select',
+              options: [
+                { value: 'off', label: 'Off: standard streaming, works everywhere' },
+                { value: 'lan', label: 'On: for devices on your home network' },
+              ],
+              hint: 'WebRTC is much smoother and closer to real time. Browsers connect straight to the server on the port below; if they can\u2019t, video falls back to standard streaming.',
+            },
+            {
+              key: 'webrtcLanAddress',
+              label: "Server's home-network address",
+              kind: 'text',
+              placeholder: '192.168.1.20',
+              show: (v) => v.webrtcMode === 'lan',
+              hint: 'The Ubuntu server\u2019s LAN IP (run `hostname -I` on it). Give it a DHCP reservation so it doesn\u2019t change.',
+            },
+            { key: 'webrtcPort', label: 'WebRTC port', kind: 'number', show: (v) => v.webrtcMode === 'lan', hint: 'Must match the port published for go2rtc in docker-compose.yml (8555 by default, TCP and UDP).' },
             { key: 'go2rtcUrl', label: 'Live video relay (go2rtc) URL', kind: 'url', placeholder: 'http://go2rtc:1984', hint: 'Leave as http://go2rtc:1984 when using the included docker-compose file.' },
             { key: 'doorbellPopupEnabled', label: 'Pop up the doorbell camera when it rings', kind: 'bool' },
             { key: 'doorbellPopupSeconds', label: 'Doorbell pop-up stays open for (seconds)', kind: 'number', show: (v) => !!v.doorbellPopupEnabled },
           ]}
-          extra={(vals, set) => <CameraPicker vals={vals} set={set} />}
+          extra={(vals, set) => (
+            <>
+              <CameraPicker vals={vals} set={set} />
+              <WebRtcApply />
+            </>
+          )}
           test={{
             label: 'Test connection',
             run: (vals) =>
@@ -777,6 +822,38 @@ function CameraPicker({ vals, set }: { vals: Values; set: (k: string, v: string)
           {cameras.length === 0 && <span className="muted small">No cameras found.</span>}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Push WebRTC addresses to the video relay now (it also happens automatically after saving). */
+function WebRtcApply() {
+  const [msg, setMsg] = useState<{ ok: boolean; message: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="field">
+      <span className="field-label">Video relay</span>
+      <div className="row">
+        <button
+          type="button"
+          className="btn btn-sm"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              setMsg(await api<{ ok: boolean; message: string }>('/admin/protect/webrtc/apply', 'POST'));
+            } catch (e: any) {
+              setMsg({ ok: false, message: e.message });
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {busy ? 'Applying…' : 'Apply video settings now'}
+        </button>
+        <span className="muted small">Save first. Applied automatically within a few seconds after saving anyway.</span>
+      </div>
+      {msg && <div className={`test-result ${msg.ok ? 'ok' : 'bad'}`}>{msg.message}</div>}
     </div>
   );
 }

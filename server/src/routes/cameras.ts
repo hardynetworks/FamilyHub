@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { UserRow } from '../auth';
-import { camerasConfig, cameraEvents, ensureLiveStream, getSnapshot, isRegisteredStream, protectConfig, visibleCameras } from '../protect';
+import { camerasConfig, cameraEvents, ensureLiveStream, getSnapshot, isRegisteredStream, playerMode, protectConfig, visibleCameras } from '../protect';
 import { HttpError, parse } from '../util';
 
 export const camerasRouter = Router();
@@ -58,8 +58,9 @@ camerasRouter.get('/:id/snapshot', async (req, res) => {
 camerasRouter.post('/:id/live', async (req, res) => {
   if (!protectConfig().enabled) throw new HttpError(404, 'Cameras are not set up');
   if (!camerasConfig().go2rtcUrl) throw new HttpError(400, 'Live video is not set up (no go2rtc URL)');
-  const name = await ensureLiveStream(String(req.params.id));
-  res.json({ player: `/go2rtc/stream.html?src=${encodeURIComponent(name)}&mode=mse` });
+  const { size } = parse(z.object({ size: z.enum(['tile', 'full']).default('full') }), req.body ?? {});
+  const name = await ensureLiveStream(String(req.params.id), size);
+  res.json({ player: `/go2rtc/stream.html?src=${encodeURIComponent(name)}&mode=${encodeURIComponent(playerMode())}` });
 });
 
 // ---------------- Authenticated, allow-listed proxy to go2rtc's web player ----------------

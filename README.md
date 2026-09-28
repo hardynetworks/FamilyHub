@@ -126,7 +126,15 @@ FamilyHub can show your UniFi Protect cameras on the Home page and pop up the do
    - **Snapshots, live when tapped.** Snapshot tiles; tapping one opens full-screen live video.
 4. **Doorbell pop-up.** When the doorbell rings, every open FamilyHub screen shows that camera full screen for 30 seconds (configurable), even over the photo slideshow. Each person can turn this off for themselves.
 
-**How live video works:** browsers can't play Protect's RTSPS streams, so the bundled `go2rtc` container converts them into video the browser can play. FamilyHub passes the video through to signed-in users. go2rtc has no published ports, so nothing new is exposed on your network. If you use a reverse proxy, make sure **WebSocket support** is enabled for FamilyHub; live video, like the doorbell, depends on it.
+**Smooth, fast live video** (Settings → App settings → Cameras):
+
+- **Keep cameras ready in the background** (on by default for tile streams). The video relay stays connected to your cameras around the clock (go2rtc "preload"), so live video starts almost instantly instead of waiting a few seconds each time. It uses a little constant bandwidth on your home network, with no transcoding.
+- **Two qualities.** Small Home tiles use Protect's *low* stream, and full screen uses *high*. Both can be changed.
+- **Low-latency WebRTC** (optional). Turn it on and enter the server's home-network IP (e.g. `192.168.1.20`).
+
+  Devices on your home network then connect straight to the server on port **8555 (TCP and UDP)**, which `docker-compose.yml` publishes. Allow it through the server's firewall (e.g. `sudo ufw allow 8555`). FamilyHub writes the go2rtc config and restarts go2rtc for you. If a browser can't reach that port, video falls back to standard streaming automatically. If 8555 is taken, set `WEBRTC_PORT=xxxx` in `.env`.
+
+**How live video works:** browsers can't play Protect's RTSPS streams, so the bundled `go2rtc` container converts them into video the browser can play. FamilyHub passes the video through to signed-in users. go2rtc's control API is never published; only its WebRTC media port (8555) is, and that only carries video that FamilyHub has already set up for a signed-in user. If you use a reverse proxy, make sure **WebSocket support** is enabled for FamilyHub; live video, like the doorbell, depends on it.
 
 ## Weather
 

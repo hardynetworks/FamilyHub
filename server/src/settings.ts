@@ -48,6 +48,11 @@ export interface Settings {
   doorbellPopupSeconds: number;
   familyName: string;
   homeDefaultLayout: string;
+  camerasTileQuality: string;
+  camerasPreload: string;
+  webrtcMode: string;
+  webrtcLanAddress: string;
+  webrtcPort: number;
 }
 export type SettingKey = keyof Settings;
 
@@ -92,7 +97,12 @@ export const DEFS: Record<SettingKey, Def> = {
   camerasMode: { env: 'CAMERAS_MODE', def: 'snapshots_live' }, // off | snapshots | live | snapshots_live
   camerasSelected: { env: 'CAMERAS_SELECTED', def: '' }, // ordered, comma-separated camera ids; empty = all
   camerasSnapshotSeconds: { env: 'CAMERAS_SNAPSHOT_SECONDS', def: 5 },
-  camerasLiveQuality: { env: 'CAMERAS_LIVE_QUALITY', def: 'medium' }, // high | medium | low
+  camerasLiveQuality: { env: 'CAMERAS_LIVE_QUALITY', def: 'high' }, // full-screen quality: high | medium | low
+  camerasTileQuality: { env: 'CAMERAS_TILE_QUALITY', def: 'low' }, // quality for small Home tiles
+  camerasPreload: { env: 'CAMERAS_PRELOAD', def: 'tiles' }, // keep streams warm: off | tiles | all
+  webrtcMode: { env: 'WEBRTC_MODE', def: 'off' }, // off | lan
+  webrtcLanAddress: { env: 'WEBRTC_LAN_ADDRESS', def: '' }, // server's home-network IP or hostname
+  webrtcPort: { env: 'WEBRTC_PORT', def: 8555 },
   go2rtcUrl: { env: 'GO2RTC_URL', def: 'http://go2rtc:1984' },
   doorbellPopupEnabled: { env: 'DOORBELL_POPUP_ENABLED', def: true },
   doorbellPopupSeconds: { env: 'DOORBELL_POPUP_SECONDS', def: 30 },
