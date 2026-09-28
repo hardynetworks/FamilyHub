@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { PhotoList, api } from '../lib/api';
 import { fmt, fmtTime } from '../lib/dates';
 import { useMe } from '../lib/hooks';
+import { SlideWeather } from './Weather';
 
 export function usePhotos(enabled = true) {
   return useQuery({
@@ -144,6 +145,7 @@ function SlideshowOverlay({ photos, slideSeconds, onClose }: { photos: PhotoList
           <img className="slide-img" src={l.src} alt="" style={{ animationDuration: `${slideSeconds + 2}s` }} />
         </div>
       ))}
+      <SlideWeather />
       <div className="slide-info">
         <div className="slide-time">{fmtTime(now)}</div>
         <div className="slide-date">{fmt(now, { weekday: 'long', month: 'long', day: 'numeric' })}</div>

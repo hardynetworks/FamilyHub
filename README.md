@@ -9,7 +9,7 @@ Sign-in options: **Authentik (OIDC)** and/or local email + password accounts.
 | Area | What you get |
 |---|---|
 | **Home** | Clock and greeting, the week's agenda, today's chores by person, today's meals, shopping list, open to-dos. Refreshes itself every minute, so it works well on a wall tablet. |
-| **Calendar** | Month / week / day / agenda views, color-coded by family member, member filters, drag-to-move/resize, repeating events (daily, weekly, every 2 weeks, monthly, yearly, with an optional end date). |
+| **Calendar** | Fills the window and resizes with it (agenda view on phones). Month / week / day / agenda views, color-coded by family member, member filters, drag-to-move/resize, repeating events (daily, weekly, every 2 weeks, monthly, yearly, with an optional end date). |
 | **Google sync** | Each person connects their own Google account(s) and picks which calendars to sync and who each calendar belongs to. Google events show up in FamilyHub. Events created or edited in FamilyHub on a Google calendar are written to Google right away. Changes made in Google are pulled in every 5 minutes (configurable) or when you click **Sync now**. |
 | **Lists** | Multiple shopping and to-do lists. Paste several lines to add many items at once. Items can have an assignee and a due date. You can hide or clear completed items. |
 | **Chores** | Daily, specific-weekday, or one-time chores, assigned to a person or to "anyone". Tap to complete. Points feed a weekly leaderboard. |
@@ -87,6 +87,12 @@ Account matching on SSO login works in this order: an existing link, then a fami
 - **Who an event is for.** The "Who's it for?" members are stored on the Google event as a private extended property, so they survive round trips.
 - **Read-only calendars.** Calendars shared with you as read-only (holidays, school calendars, etc.) can be synced and viewed but not edited.
 - **Token storage.** OAuth tokens and client secrets are encrypted at rest (AES-256-GCM) with the auto-generated key in `/data/secrets.json`.
+
+## Weather
+
+The Home page shows the current conditions and a 6-day forecast, and the photo slideshow shows the temperature in the corner. The data comes from [Open-Meteo](https://open-meteo.com), which is free and needs no API key; FamilyHub fetches it on the server and caches it for 15 minutes.
+
+To set it up, an admin goes to **Settings → App settings → Weather**, searches for a city or ZIP code (or uses the device's location), and picks °F or °C.
 
 ## Photo slideshow (Home screensaver)
 

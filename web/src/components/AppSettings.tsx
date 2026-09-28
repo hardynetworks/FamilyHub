@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ReactNode, useEffect, useState } from 'react';
+import { FormEvent, ReactNode, useEffect, useState } from 'react';
 import { AdminSettings, api } from '../lib/api';
 import { useToast } from '../lib/hooks';
 import { CopyField, Field, Icon, TimezoneList } from './ui';
@@ -122,6 +122,8 @@ export function AppSettings() {
         }}
         footerNote="After saving, each person connects their own Google account in the Google Calendar card above."
       />
+
+      <WeatherSettings data={d} />
 
       <SettingsSection
         data={d}
@@ -470,5 +472,146 @@ function ImmichAlbumPicker({ vals, set }: { vals: Values; set: (k: string, v: st
         </div>
       )}
     </div>
+  );
+}
+
+interface GeoResult {
+  name: string;
+  region: string;
+  label: string;
+  latitude: number;
+  longitude: number;
+}
+
+/** Household weather location + units (Open-Meteo). */
+function WeatherSettings({ data }: { data: AdminSettings }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const st = data.settings;
+  const locked = ['weatherLocationName', 'weatherLatitude', 'weatherLongitude'].some((k) => st[k]?.lockedByEnv);
+  const current = String(st.weatherLocationName?.value ?? '');
+  const hasLocation = String(st.weatherLatitude?.value ?? '') !== '';
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<GeoResult[] | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const save = async (patch: Record<string, unknown>, msg: string) => {
+    try {
+      const next = await api<AdminSettings>('/admin/settings', 'PUT', patch);
+      qc.setQueryData(['admin-settings'], next);
+      qc.invalidateQueries({ queryKey: ['weather'] });
+      toast(msg, 'success');
+    } catch (e: any) {
+      toast(e.message, 'error');
+    }
+  };
+
+  const search = async (e?: FormEvent) => {
+    e?.preventDefault();
+    if (query.trim().length < 2) return;
+    setBusy(true);
+    try {
+      setResults(await api<GeoResult[]>(`/admin/weather/search?q=${encodeURIComponent(query.trim())}`));
+    } catch (err: any) {
+      toast(err.message, 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const useMyLocation = () => {
+    if (!navigator.geolocation) return toast('This browser cannot share its location', 'error');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude.toFixed(4);
+        const lon = pos.coords.longitude.toFixed(4);
+        save({ weatherLocationName: `My location (${lat}, ${lon})`, weatherLatitude: lat, weatherLongitude: lon }, 'Weather location saved');
+      },
+      (err) => toast(`Couldn't get your location: ${err.message}`, 'error'),
+      { timeout: 10_000 },
+    );
+  };
+
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h2>Weather</h2>
+        <span className={`status-pill ${hasLocation && st.weatherEnabled?.value ? 'ok' : ''}`}>{hasLocation ? (st.weatherEnabled?.value ? 'On' : 'Off') : 'No location'}</span>
+      </div>
+      <p className="muted small settings-intro">
+        Local weather on the Home page and the photo slideshow, from{' '}
+        <a href="https://open-meteo.com" target="_blank" rel="noreferrer">
+          Open-Meteo
+        </a>{' '}
+        (free, no account needed).
+      </p>
+      <div className="form">
+        <label className="toggle">
+          <input
+            type="checkbox"
+            checked={!!st.weatherEnabled?.value}
+            disabled={st.weatherEnabled?.lockedByEnv}
+            onChange={(e) => save({ weatherEnabled: e.target.checked }, e.target.checked ? 'Weather turned on' : 'Weather turned off')}
+          />{' '}
+          Show weather
+        </label>
+        <Field label="Location" hint={locked ? 'Set by environment variables.' : undefined}>
+          <div className="wx-location">{hasLocation ? <strong>{current || `${st.weatherLatitude?.value}, ${st.weatherLongitude?.value}`}</strong> : <span className="muted">Not set</span>}</div>
+        </Field>
+        {!locked && (
+          <>
+            <form className="row" onSubmit={search}>
+              <input className="input" placeholder="Search city or ZIP code" value={query} onChange={(e) => setQuery(e.target.value)} />
+              <button className="btn" disabled={busy || query.trim().length < 2}>
+                {busy ? 'Searching…' : 'Search'}
+              </button>
+            </form>
+            <button type="button" className="link-btn" onClick={useMyLocation}>
+              Use this device's location
+            </button>
+            {results && (
+              <div className="wx-results">
+                {results.length === 0 && <span className="muted small">No places found. Try a nearby city.</span>}
+                {results.map((r) => (
+                  <button
+                    type="button"
+                    key={`${r.latitude},${r.longitude}`}
+                    className="manage-row"
+                    onClick={() => {
+                      setResults(null);
+                      setQuery('');
+                      save(
+                        { weatherLocationName: r.label, weatherLatitude: String(r.latitude), weatherLongitude: String(r.longitude) },
+                        `Weather location set to ${r.name}`,
+                      );
+                    }}
+                  >
+                    <span className="grow">
+                      <div>{r.name}</div>
+                      <div className="muted small">{r.region}</div>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+        <Field label="Units">
+          <div className="seg">
+            {(['fahrenheit', 'celsius'] as const).map((u) => (
+              <button
+                type="button"
+                key={u}
+                className={st.weatherUnits?.value === u ? 'on' : ''}
+                disabled={st.weatherUnits?.lockedByEnv}
+                onClick={() => st.weatherUnits?.value !== u && save({ weatherUnits: u }, 'Units saved')}
+              >
+                {u === 'fahrenheit' ? '°F' : '°C'}
+              </button>
+            ))}
+          </div>
+        </Field>
+      </div>
+    </section>
   );
 }

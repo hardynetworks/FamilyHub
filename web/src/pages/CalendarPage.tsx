@@ -5,7 +5,7 @@ import listPlugin from '@fullcalendar/list';
 import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { EventDraft, EventModal } from '../components/EventModal';
 import { Icon } from '../components/ui';
 import { CalEvent, Member, api, qs } from '../lib/api';
@@ -24,7 +24,58 @@ export function CalendarPage() {
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<CalEvent | null>(null);
   const [draft, setDraft] = useState<EventDraft | null>(null);
-  const narrow = typeof window !== 'undefined' && window.innerWidth < 720;
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [narrow, setNarrow] = useState(() => window.innerWidth < 720);
+  const [height, setHeight] = useState(600);
+
+  // Size the calendar to fill the space left in the window, and keep it in sync as the window,
+  // the page header (member chips wrap) or the mobile tab bar change.
+  const measure = useCallback(() => {
+    const card = cardRef.current;
+    if (!card) return;
+    // The main area's bottom padding already makes room for the phone tab bar.
+    const main = card.closest('.main') as HTMLElement | null;
+    const mainPad = main ? parseFloat(getComputedStyle(main).paddingBottom) || 0 : 0;
+    const top = card.getBoundingClientRect().top + window.scrollY;
+    const cardChrome = card.offsetHeight - card.clientHeight + 28; // borders + 14px padding top and bottom
+    const available = window.innerHeight - top - mainPad - cardChrome;
+    setHeight(Math.max(narrow ? 460 : 520, Math.floor(available)));
+    setNarrow(window.innerWidth < 720);
+  }, [narrow]);
+
+  useLayoutEffect(() => {
+    measure();
+    let frame = 0;
+    const onResize = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measure);
+    };
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
+    const ro = new ResizeObserver(onResize);
+    const header = cardRef.current?.previousElementSibling;
+    if (header) ro.observe(header);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
+      ro.disconnect();
+    };
+  }, [measure]);
+
+  // Switch between the phone layout (agenda) and the desktop layout (month) when crossing the breakpoint.
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    const cal = calRef.current?.getApi();
+    if (!cal) return;
+    const view = cal.view.type;
+    if (narrow && (view === 'timeGridWeek' || view === 'dayGridMonth')) cal.changeView('listWeek');
+    if (!narrow && view === 'listWeek') cal.changeView('dayGridMonth');
+  }, [narrow]);
 
   // Poll so the wall display stays fresh.
   useEffect(() => {
@@ -122,18 +173,19 @@ export function CalendarPage() {
           <Icon name="plus" size={18} /> New event
         </button>
       </header>
-      <div className="card cal-card">
+      <div className="card cal-card" ref={cardRef}>
         <FullCalendar
           ref={calRef}
           plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
           initialView={narrow ? 'listWeek' : 'dayGridMonth'}
           headerToolbar={narrow ? { left: 'prev,next', center: 'title', right: 'listWeek,dayGridMonth' } : { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek' }}
           buttonText={{ today: 'Today', month: 'Month', week: 'Week', day: 'Day', list: 'Agenda' }}
-          height="100%"
+          height={height}
+          expandRows
           nowIndicator
           selectable
           selectMirror
-          dayMaxEvents={4}
+          dayMaxEvents
           events={fetchEvents}
           select={(a: DateSelectArg) => {
             setDraft({ start: a.start, end: a.end, allDay: a.allDay });

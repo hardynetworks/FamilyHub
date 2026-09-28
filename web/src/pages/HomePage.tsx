@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { EventModal } from '../components/EventModal';
 import { IdleSlideshow, usePhotos } from '../components/Slideshow';
+import { WeatherCard, WeatherNow } from '../components/Weather';
 import { Avatar, Empty, Icon } from '../components/ui';
 import { CalEvent, Chore, List, ListItem, Meal, api, qs } from '../lib/api';
 import { addDays, addDaysYmd, fmtDayLong, fmtTime, relativeDayLabel, startOfDay, today, ymd } from '../lib/dates';
@@ -83,11 +84,13 @@ export function HomePage() {
               <Icon name="image" size={16} /> Photos
             </button>
           )}
+          <WeatherNow />
           <div className="hero-time">{fmtTime(now)}</div>
         </div>
       </header>
 
       <div className="home-grid">
+        <WeatherCard />
         <section className="card home-agenda">
           <div className="card-head">
             <h2>Coming up</h2>

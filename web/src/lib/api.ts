@@ -35,6 +35,15 @@ export interface Member {
   prefs: { slideshowEnabled: boolean; slideshowIdleMinutes: number };
 }
 
+export interface WeatherData {
+  enabled: boolean;
+  location?: string;
+  units?: 'fahrenheit' | 'celsius';
+  current?: { temp: number; feelsLike: number; code: number; isDay: boolean; wind: number; humidity: number; time: string };
+  daily?: { date: string; code: number; max: number; min: number; precipChance: number | null; sunrise: string; sunset: string }[];
+  updatedAt?: string;
+}
+
 export interface PhotoList {
   enabled: boolean;
   slideSeconds: number;

@@ -4,6 +4,7 @@ import { fetchDiscovery } from '../auth';
 import { baseUrl, config, isValidTimezone } from '../config';
 import { testGoogleCredentials } from '../google';
 import { getPhotos, immichAlbums } from '../photos';
+import { searchLocations } from '../weather';
 import { SETTING_KEYS, SettingKey, describeSettings, getSetting, isLockedByEnv, saveSettings } from '../settings';
 import { HttpError, parse } from '../util';
 
@@ -78,6 +79,21 @@ const Patch = z
     immichAlbumIds: z.string().max(5000).nullable().optional(),
     photosSlideSeconds: z.number().int().min(3).max(300).nullable().optional(),
     photosRefreshMinutes: z.number().int().min(5).max(1440).nullable().optional(),
+    weatherEnabled: z.boolean().nullable().optional(),
+    weatherLocationName: str(200),
+    weatherLatitude: z
+      .string()
+      .trim()
+      .refine((v) => v === '' || (Math.abs(Number(v)) <= 90 && v !== ''), 'invalid latitude')
+      .nullable()
+      .optional(),
+    weatherLongitude: z
+      .string()
+      .trim()
+      .refine((v) => v === '' || (Math.abs(Number(v)) <= 180 && v !== ''), 'invalid longitude')
+      .nullable()
+      .optional(),
+    weatherUnits: z.enum(['fahrenheit', 'celsius']).nullable().optional(),
   })
   .strict();
 
@@ -170,4 +186,10 @@ adminRouter.post('/immich/albums', async (req, res) => {
     const msg = e.status === 401 ? 'Immich rejected the API key' : `Could not reach Immich: ${e.cause?.code ?? e.message}`;
     res.json({ ok: false, message: msg, albums: [] });
   }
+});
+
+/** Location search for the weather picker (Open-Meteo geocoding). */
+adminRouter.get('/weather/search', async (req, res) => {
+  const { q } = parse(z.object({ q: z.string().trim().min(2).max(100) }), req.query);
+  res.json(await searchLocations(q));
 });

@@ -18,6 +18,7 @@ import { itemsRouter, listsRouter } from './routes/lists';
 import { mealsRouter, recipesRouter } from './routes/meals';
 import { membersRouter } from './routes/members';
 import { photosRouter } from './routes/photos';
+import { weatherRouter } from './routes/weather';
 import { errorHandler } from './util';
 
 async function main() {
@@ -77,6 +78,7 @@ async function main() {
   app.use('/api/recipes', requireAuth, recipesRouter);
   app.use('/api/meals', requireAuth, mealsRouter);
   app.use('/api/photos', requireAuth, photosRouter);
+  app.use('/api/weather', requireAuth, weatherRouter);
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));
 
   // Serve the built web app (SPA).

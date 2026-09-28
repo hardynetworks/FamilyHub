@@ -258,9 +258,7 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .due.overdue { color: var(--danger); background: rgba(201, 60, 60, 0.1); }
 
 /* ---------- Calendar ---------- */
-.page-calendar { height: calc(100vh - 68px); }
-.cal-card { flex: 1; min-height: 560px; padding: 14px; }
-@media (max-width: 860px) { .page-calendar { height: auto; } .cal-card { min-height: 70vh; } }
+.cal-card { padding: 14px; }
 .fc { --fc-border-color: var(--line); --fc-page-bg-color: var(--surface); --fc-neutral-bg-color: var(--surface-2); --fc-today-bg-color: var(--accent-soft); --fc-list-event-hover-bg-color: var(--surface-2); font-size: 14px; }
 .fc .fc-toolbar-title { font-size: 20px; font-weight: 800; }
 .fc .fc-button { background: var(--surface-2); border: none; color: var(--ink); font-weight: 650; text-transform: none; border-radius: 999px !important; padding: 6px 12px; margin: 0 2px !important; box-shadow: none !important; }
@@ -397,3 +395,27 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .slide-date { font-size: clamp(18px, 2.4vw, 30px); font-weight: 600; opacity: 0.92; margin-top: 6px; }
 .slide-taken { position: absolute; right: 40px; bottom: 40px; color: rgba(255, 255, 255, 0.85); font-size: 18px; font-weight: 600; text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6); }
 @media (max-width: 560px) { .slide-info { left: 20px; bottom: 24px; } .slide-taken { right: 20px; bottom: 28px; font-size: 14px; } }
+
+/* ---------- Weather ---------- */
+.wx-now { display: flex; align-items: center; gap: 10px; }
+.wx-now-icon { font-size: 40px; line-height: 1; }
+.wx-now-temp { font-size: 30px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.wx-now-sub { font-size: 13px; color: var(--ink-2); font-weight: 600; white-space: nowrap; }
+@media (max-width: 560px) { .wx-now-icon { font-size: 30px; } .wx-now-temp { font-size: 24px; } .wx-now-sub { display: none; } }
+.wx-card-now { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.wx-card-icon { font-size: 52px; line-height: 1; }
+.wx-card-temp { font-size: 40px; font-weight: 800; line-height: 1; }
+.wx-days { display: grid; grid-template-columns: repeat(auto-fit, minmax(58px, 1fr)); gap: 6px; }
+.wx-day { text-align: center; background: var(--surface-2); border-radius: 12px; padding: 8px 4px; display: flex; flex-direction: column; gap: 2px; }
+.wx-day-name { font-size: 12px; font-weight: 700; color: var(--ink-2); }
+.wx-day-icon { font-size: 22px; }
+.wx-day-temps { font-size: 13px; }
+.wx-day-rain { font-size: 11px; color: #3d8bd6; font-weight: 700; }
+.wx-location { padding: 8px 0; }
+.wx-results { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: var(--radius-sm); max-height: 260px; overflow-y: auto; }
+.seg button:disabled { opacity: 0.5; }
+.slide-weather { position: absolute; top: 32px; right: 40px; display: flex; align-items: center; gap: 14px; color: #fff; text-shadow: 0 2px 16px rgba(0, 0, 0, 0.6); }
+.slide-weather-icon { font-size: clamp(44px, 6vw, 80px); line-height: 1; filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.4)); }
+.slide-weather-temp { font-size: clamp(40px, 6vw, 76px); font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.slide-weather-sub { font-size: clamp(14px, 1.6vw, 22px); font-weight: 600; opacity: 0.92; }
+@media (max-width: 560px) { .slide-weather { top: 20px; right: 20px; } }

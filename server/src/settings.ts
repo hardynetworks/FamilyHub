@@ -31,6 +31,11 @@ export interface Settings {
   immichAlbumIds: string;
   photosSlideSeconds: number;
   photosRefreshMinutes: number;
+  weatherEnabled: boolean;
+  weatherLocationName: string;
+  weatherLatitude: string;
+  weatherLongitude: string;
+  weatherUnits: string;
 }
 export type SettingKey = keyof Settings;
 
@@ -64,6 +69,11 @@ export const DEFS: Record<SettingKey, Def> = {
   immichAlbumIds: { env: 'IMMICH_ALBUM_IDS', def: '' }, // comma-separated; empty = favorites
   photosSlideSeconds: { env: 'PHOTOS_SLIDE_SECONDS', def: 10 },
   photosRefreshMinutes: { env: 'PHOTOS_REFRESH_MINUTES', def: 60 },
+  weatherEnabled: { env: 'WEATHER_ENABLED', def: true },
+  weatherLocationName: { env: 'WEATHER_LOCATION_NAME', def: '' },
+  weatherLatitude: { env: 'WEATHER_LATITUDE', def: '' },
+  weatherLongitude: { env: 'WEATHER_LONGITUDE', def: '' },
+  weatherUnits: { env: 'WEATHER_UNITS', def: 'fahrenheit' }, // fahrenheit | celsius
 };
 
 export const SETTING_KEYS = Object.keys(DEFS) as SettingKey[];
