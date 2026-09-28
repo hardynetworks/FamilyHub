@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { AppSettings } from '../components/AppSettings';
+import { useCameras } from '../components/Cameras';
 import { Avatar, COLOR_CHOICES, EMOJI_CHOICES, Field, Icon, Modal } from '../components/ui';
 import { GoogleStatus, Member, api } from '../lib/api';
 import { useAction, useAuthStatus, useMe, useMembers, useToast } from '../lib/hooks';
@@ -27,6 +28,7 @@ export function SettingsPage({ onLogout }: { onLogout: () => void }) {
       </header>
       <ProfileCard />
       <SlideshowPrefsCard />
+      <CameraPrefsCard />
       <FamilyCard />
       <GoogleCard />
       {me.role === 'admin' && <AppSettings />}
@@ -115,6 +117,49 @@ function SlideshowPrefsCard() {
           These settings are yours only. Touching the screen, clicking or pressing a key closes the slideshow. An admin chooses where the photos come from under App settings →
           Photos.
         </p>
+      </div>
+    </section>
+  );
+}
+
+function CameraPrefsCard() {
+  const me = useMe();
+  const qc = useQueryClient();
+  const toast = useToast();
+  const cams = useCameras();
+  if (!cams.data?.enabled) return null;
+  const save = async (prefs: Partial<Member['prefs']>) => {
+    try {
+      await api(`/members/${me.id}`, 'PATCH', { prefs });
+      await qc.invalidateQueries({ queryKey: ['auth'] });
+      await qc.invalidateQueries({ queryKey: ['cameras'] });
+      toast('Camera setting saved', 'success');
+    } catch (e: any) {
+      toast(e.message, 'error');
+    }
+  };
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h2>
+          <Icon name="camera" size={18} /> Cameras
+        </h2>
+      </div>
+      <div className="form">
+        <Field label="Show cameras on my Home page as">
+          <select className="input" value={me.prefs.camerasMode} onChange={(e) => save({ camerasMode: e.target.value as Member['prefs']['camerasMode'] })}>
+            <option value="default">Family default</option>
+            <option value="snapshots_live">Snapshots, live video when tapped</option>
+            <option value="snapshots">Snapshots only</option>
+            <option value="live">Live video</option>
+            <option value="off">Hidden</option>
+          </select>
+        </Field>
+        <label className="toggle">
+          <input type="checkbox" checked={me.prefs.doorbellPopup} onChange={(e) => save({ doorbellPopup: e.target.checked })} /> Pop up the doorbell camera on my screens
+          when someone rings
+        </label>
+        <p className="muted small">Live video uses more data and battery than snapshots; "Snapshots, live when tapped" is a good fit for phones and wall tablets.</p>
       </div>
     </section>
   );

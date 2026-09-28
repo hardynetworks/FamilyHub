@@ -32,7 +32,27 @@ export interface Member {
   canLogin: boolean;
   hasPassword: boolean;
   linkedSso: boolean;
-  prefs: { slideshowEnabled: boolean; slideshowIdleMinutes: number };
+  prefs: { slideshowEnabled: boolean; slideshowIdleMinutes: number; camerasMode: CamerasMode | 'default'; doorbellPopup: boolean };
+}
+
+export type CamerasMode = 'off' | 'snapshots' | 'live' | 'snapshots_live';
+
+export interface CameraInfo {
+  id: string;
+  name: string;
+  state: string;
+  model: string | null;
+  isDoorbell: boolean;
+}
+
+export interface CameraList {
+  enabled: boolean;
+  mode?: CamerasMode;
+  snapshotSeconds: number;
+  liveAvailable?: boolean;
+  doorbell?: { enabled: boolean; seconds: number };
+  cameras: CameraInfo[];
+  error?: string;
 }
 
 export interface WeatherData {

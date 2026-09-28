@@ -19,6 +19,9 @@ import { mealsRouter, recipesRouter } from './routes/meals';
 import { membersRouter } from './routes/members';
 import { photosRouter } from './routes/photos';
 import { weatherRouter } from './routes/weather';
+import { camerasRouter, go2rtcRouter } from './routes/cameras';
+import { attachGo2rtcProxy } from './go2rtcProxy';
+import { startEvents } from './protect';
 import { errorHandler } from './util';
 
 async function main() {
@@ -33,8 +36,7 @@ async function main() {
   app.use(express.json({ limit: '1mb' }));
 
   const PgStore = connectPgSimple(session);
-  app.use(
-    session({
+  const sessionMiddleware = session({
       name: 'familyhub.sid',
       store: new PgStore({ pool, createTableIfMissing: true, tableName: 'user_sessions' }),
       secret: config.sessionSecret,
@@ -48,8 +50,8 @@ async function main() {
         secure: 'auto', // Secure cookie whenever the request arrived over HTTPS (via X-Forwarded-Proto behind a proxy)
         maxAge: 1000 * 60 * 60 * 24 * 90,
       },
-    }),
-  );
+  });
+  app.use(sessionMiddleware);
   app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'same-origin');
@@ -79,6 +81,8 @@ async function main() {
   app.use('/api/meals', requireAuth, mealsRouter);
   app.use('/api/photos', requireAuth, photosRouter);
   app.use('/api/weather', requireAuth, weatherRouter);
+  app.use('/api/cameras', requireAuth, camerasRouter);
+  app.use('/go2rtc', requireAuth, go2rtcRouter);
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));
 
   // Serve the built web app (SPA).
@@ -96,10 +100,12 @@ async function main() {
 
   app.use(errorHandler);
 
-  app.listen(config.port, () => {
+  const server = app.listen(config.port, () => {
     console.log(`${config.appName} listening on :${config.port} (App URL: ${config.appUrl || 'auto-detect'}, TZ: ${config.timezone})`);
     console.log(`Local login: ${config.localLogin ? 'on' : 'off'} | SSO: ${config.oidc.enabled ? 'on' : 'off'} | Google sync: ${config.google.enabled ? 'on' : 'off'}`);
   });
+  attachGo2rtcProxy(server, sessionMiddleware);
+  startEvents();
   startSyncLoop();
 }
 

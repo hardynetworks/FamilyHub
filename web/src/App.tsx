@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useState } from 'react';
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
+import { DoorbellPopup } from './components/Cameras';
 import { Avatar, Icon, Spinner } from './components/ui';
 import { api } from './lib/api';
 import { ToastContext, ToastFn, useAuthStatus } from './lib/hooks';
@@ -95,6 +96,7 @@ function Shell({ appName }: { appName: string }) {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      <DoorbellPopup />
       <nav className="tabbar">
         {NAV.map((n) => (
           <NavLink key={n.to} to={n.to} end={n.to === '/'} className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}>

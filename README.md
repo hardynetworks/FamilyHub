@@ -88,6 +88,22 @@ Account matching on SSO login works in this order: an existing link, then a fami
 - **Read-only calendars.** Calendars shared with you as read-only (holidays, school calendars, etc.) can be synced and viewed but not edited.
 - **Token storage.** OAuth tokens and client secrets are encrypted at rest (AES-256-GCM) with the auto-generated key in `/data/secrets.json`.
 
+## Cameras (UniFi Protect)
+
+FamilyHub can show your UniFi Protect cameras on the Home page and pop up the doorbell camera when someone rings. It uses the official **Protect Integration API**, which needs Protect 5.3 or newer and an API key.
+
+1. In your UniFi console, create an API key. It's under **Settings → Control Plane → Integrations**, or **Protect → Settings → Integrations** on some versions.
+2. In FamilyHub, go to **Settings → App settings → Cameras**:
+   - Enter the console address (e.g. `https://192.168.1.1`) and the API key.
+   - Click **Test connection**, then **Choose cameras** to pick which cameras appear on Home and in what order.
+3. Choose the default display. Each person can change it for themselves under **Settings → Cameras**:
+   - **Snapshots.** A still image from each camera, refreshed every few seconds.
+   - **Live video.** Live streams on the Home page.
+   - **Snapshots, live when tapped.** Snapshot tiles; tapping one opens full-screen live video.
+4. **Doorbell pop-up.** When the doorbell rings, every open FamilyHub screen shows that camera full screen for 30 seconds (configurable), even over the photo slideshow. Each person can turn this off for themselves.
+
+**How live video works:** browsers can't play Protect's RTSPS streams, so the bundled `go2rtc` container converts them into video the browser can play. FamilyHub passes the video through to signed-in users. go2rtc has no published ports, so nothing new is exposed on your network. If you use a reverse proxy, make sure **WebSocket support** is enabled for FamilyHub; live video, like the doorbell, depends on it.
+
 ## Weather
 
 The Home page shows the current conditions and a 6-day forecast, and the photo slideshow shows the temperature in the corner. The data comes from [Open-Meteo](https://open-meteo.com), which is free and needs no API key; FamilyHub fetches it on the server and caches it for 15 minutes.

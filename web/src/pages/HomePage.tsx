@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { EventModal } from '../components/EventModal';
 import { IdleSlideshow, usePhotos } from '../components/Slideshow';
 import { WeatherCard, WeatherNow } from '../components/Weather';
+import { CamerasCard } from '../components/Cameras';
 import { Avatar, Empty, Icon } from '../components/ui';
 import { CalEvent, Chore, List, ListItem, Meal, api, qs } from '../lib/api';
 import { addDays, addDaysYmd, fmtDayLong, fmtTime, relativeDayLabel, startOfDay, today, ymd } from '../lib/dates';
@@ -89,6 +90,7 @@ export function HomePage() {
         </div>
       </header>
 
+      <CamerasCard />
       <div className="home-grid">
         <WeatherCard />
         <section className="card home-agenda">

@@ -36,6 +36,16 @@ export interface Settings {
   weatherLatitude: string;
   weatherLongitude: string;
   weatherUnits: string;
+  protectUrl: string;
+  protectApiKey: string;
+  protectVerifyTls: boolean;
+  camerasMode: string;
+  camerasSelected: string;
+  camerasSnapshotSeconds: number;
+  camerasLiveQuality: string;
+  go2rtcUrl: string;
+  doorbellPopupEnabled: boolean;
+  doorbellPopupSeconds: number;
 }
 export type SettingKey = keyof Settings;
 
@@ -74,6 +84,16 @@ export const DEFS: Record<SettingKey, Def> = {
   weatherLatitude: { env: 'WEATHER_LATITUDE', def: '' },
   weatherLongitude: { env: 'WEATHER_LONGITUDE', def: '' },
   weatherUnits: { env: 'WEATHER_UNITS', def: 'fahrenheit' }, // fahrenheit | celsius
+  protectUrl: { env: 'PROTECT_URL', def: '' }, // e.g. https://192.168.1.1 (UniFi console)
+  protectApiKey: { env: 'PROTECT_API_KEY', def: '', secret: true },
+  protectVerifyTls: { env: 'PROTECT_VERIFY_TLS', def: false }, // consoles use self-signed certificates
+  camerasMode: { env: 'CAMERAS_MODE', def: 'snapshots_live' }, // off | snapshots | live | snapshots_live
+  camerasSelected: { env: 'CAMERAS_SELECTED', def: '' }, // ordered, comma-separated camera ids; empty = all
+  camerasSnapshotSeconds: { env: 'CAMERAS_SNAPSHOT_SECONDS', def: 5 },
+  camerasLiveQuality: { env: 'CAMERAS_LIVE_QUALITY', def: 'medium' }, // high | medium | low
+  go2rtcUrl: { env: 'GO2RTC_URL', def: 'http://go2rtc:1984' },
+  doorbellPopupEnabled: { env: 'DOORBELL_POPUP_ENABLED', def: true },
+  doorbellPopupSeconds: { env: 'DOORBELL_POPUP_SECONDS', def: 30 },
 };
 
 export const SETTING_KEYS = Object.keys(DEFS) as SettingKey[];

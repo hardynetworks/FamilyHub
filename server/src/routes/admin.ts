@@ -5,6 +5,7 @@ import { baseUrl, config, isValidTimezone } from '../config';
 import { testGoogleCredentials } from '../google';
 import { getPhotos, immichAlbums } from '../photos';
 import { searchLocations } from '../weather';
+import { go2rtcReachable, listCameras } from '../protect';
 import { SETTING_KEYS, SettingKey, describeSettings, getSetting, isLockedByEnv, saveSettings } from '../settings';
 import { HttpError, parse } from '../util';
 
@@ -94,6 +95,28 @@ const Patch = z
       .nullable()
       .optional(),
     weatherUnits: z.enum(['fahrenheit', 'celsius']).nullable().optional(),
+    protectUrl: z
+      .string()
+      .trim()
+      .max(300)
+      .refine((v) => v === '' || /^https?:\/\/[^\s/]+\/?$/.test(v), 'use just the console address, e.g. https://192.168.1.1')
+      .nullable()
+      .optional(),
+    protectApiKey: z.string().max(500).nullable().optional(),
+    protectVerifyTls: z.boolean().nullable().optional(),
+    camerasMode: z.enum(['off', 'snapshots', 'live', 'snapshots_live']).nullable().optional(),
+    camerasSelected: z.string().max(5000).nullable().optional(),
+    camerasSnapshotSeconds: z.number().int().min(1).max(60).nullable().optional(),
+    camerasLiveQuality: z.enum(['high', 'medium', 'low']).nullable().optional(),
+    go2rtcUrl: z
+      .string()
+      .trim()
+      .max(300)
+      .refine((v) => v === '' || /^https?:\/\//.test(v), 'must start with http:// or https://')
+      .nullable()
+      .optional(),
+    doorbellPopupEnabled: z.boolean().nullable().optional(),
+    doorbellPopupSeconds: z.number().int().min(5).max(300).nullable().optional(),
   })
   .strict();
 
@@ -105,7 +128,7 @@ adminRouter.put('/settings', async (req, res) => {
     // Empty strings clear a value (fall back to default); empty secrets mean "keep the current one".
     if (patch[k] === '') patch[k] = null;
   }
-  for (const k of ['oidcClientSecret', 'googleClientSecret', 'immichApiKey'] as const) {
+  for (const k of ['oidcClientSecret', 'googleClientSecret', 'immichApiKey', 'protectApiKey'] as const) {
     if (patch[k] === null && req.body[k] === '') delete patch[k];
   }
   if (patch.appUrl) patch.appUrl = String(patch.appUrl).replace(/\/+$/, '');
@@ -192,4 +215,22 @@ adminRouter.post('/immich/albums', async (req, res) => {
 adminRouter.get('/weather/search', async (req, res) => {
   const { q } = parse(z.object({ q: z.string().trim().min(2).max(100) }), req.query);
   res.json(await searchLocations(q));
+});
+
+/** Test the UniFi Protect connection (unsaved form values allowed) and list cameras for the picker. */
+adminRouter.post('/protect/test', async (req, res) => {
+  const b = parse(
+    z.object({ url: z.string().trim().max(300).optional(), apiKey: z.string().max(500).optional(), verifyTls: z.boolean().optional(), go2rtcUrl: z.string().trim().max(300).optional() }),
+    req.body,
+  );
+  const url = (b.url || getSetting('protectUrl')).replace(/\/+$/, '');
+  const apiKey = b.apiKey || getSetting('protectApiKey');
+  if (!url || !apiKey) throw new HttpError(400, 'Enter the console address and API key first');
+  const go2rtc = await go2rtcReachable((b.go2rtcUrl || getSetting('go2rtcUrl')).replace(/\/+$/, ''));
+  try {
+    const cameras = await listCameras({ url, apiKey, verifyTls: b.verifyTls ?? getSetting('protectVerifyTls') }, false);
+    res.json({ ok: true, cameras, go2rtc, message: `Connected: ${cameras.length} camera${cameras.length === 1 ? '' : 's'} found. Live video relay: ${go2rtc ? 'reachable' : 'not reachable'}.` });
+  } catch (e: any) {
+    res.json({ ok: false, cameras: [], go2rtc, message: e.message });
+  }
 });

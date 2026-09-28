@@ -127,6 +127,72 @@ export function AppSettings() {
 
       <SettingsSection
         data={d}
+        title="Cameras (UniFi Protect)"
+        status={d.settings.protectUrl?.value && d.settings.protectApiKey?.isSet ? { ok: true, text: 'Connected' } : { ok: false, text: 'Not set up' }}
+        intro={
+          <>
+            <p className="muted small">
+              Shows your UniFi Protect cameras on the Home page and pops up the doorbell camera when someone rings. Requires UniFi Protect 5.3 or newer. Create an API key in
+              your UniFi console under <strong>Settings → Control Plane → Integrations</strong> (or <strong>Protect → Settings → Integrations</strong> on some versions).
+            </p>
+            <p className="muted small">
+              Live video runs through the <code>go2rtc</code> container that ships with FamilyHub's docker-compose file. It stays private and is only reachable through
+              FamilyHub.
+            </p>
+          </>
+        }
+        fields={[
+          { key: 'protectUrl', label: 'UniFi console address', kind: 'url', placeholder: 'https://192.168.1.1' },
+          { key: 'protectApiKey', label: 'API key', kind: 'secret' },
+          {
+            key: 'protectVerifyTls',
+            label: 'Verify the console certificate',
+            kind: 'bool',
+            hint: 'Leave off unless your console has a trusted certificate (UniFi consoles normally use a self-signed one).',
+          },
+          {
+            key: 'camerasMode',
+            label: 'Default display on Home',
+            kind: 'select',
+            options: [
+              { value: 'snapshots_live', label: 'Snapshots, live video when tapped' },
+              { value: 'snapshots', label: 'Snapshots only' },
+              { value: 'live', label: 'Live video' },
+              { value: 'off', label: 'Hidden' },
+            ],
+            hint: 'Each person can override this for themselves under Settings → Cameras.',
+          },
+          { key: 'camerasSelected', label: 'Cameras', kind: 'custom' },
+          { key: 'camerasSnapshotSeconds', label: 'Refresh snapshots every (seconds)', kind: 'number' },
+          {
+            key: 'camerasLiveQuality',
+            label: 'Live video quality',
+            kind: 'select',
+            options: [
+              { value: 'medium', label: 'Medium (recommended for tablets)' },
+              { value: 'high', label: 'High' },
+              { value: 'low', label: 'Low' },
+            ],
+          },
+          { key: 'go2rtcUrl', label: 'Live video relay (go2rtc) URL', kind: 'url', placeholder: 'http://go2rtc:1984', hint: 'Leave as http://go2rtc:1984 when using the included docker-compose file.' },
+          { key: 'doorbellPopupEnabled', label: 'Pop up the doorbell camera when it rings', kind: 'bool' },
+          { key: 'doorbellPopupSeconds', label: 'Doorbell pop-up stays open for (seconds)', kind: 'number', show: (v) => !!v.doorbellPopupEnabled },
+        ]}
+        extra={(vals, set) => <CameraPicker vals={vals} set={set} />}
+        test={{
+          label: 'Test connection',
+          run: (vals) =>
+            api<TestResult>('/admin/protect/test', 'POST', {
+              url: String(vals.protectUrl ?? '') || undefined,
+              apiKey: String(vals.protectApiKey ?? '') || undefined,
+              verifyTls: !!vals.protectVerifyTls,
+              go2rtcUrl: String(vals.go2rtcUrl ?? '') || undefined,
+            }),
+        }}
+      />
+
+      <SettingsSection
+        data={d}
         title="Photos (Home screensaver)"
         status={
           d.settings.photosSource?.value && d.settings.photosSource.value !== 'off'
@@ -613,5 +679,91 @@ function WeatherSettings({ data }: { data: AdminSettings }) {
         </Field>
       </div>
     </section>
+  );
+}
+
+/** Choose which cameras appear on Home, and their order. Nothing selected = all cameras. */
+function CameraPicker({ vals, set }: { vals: Values; set: (k: string, v: string) => void }) {
+  const [cameras, setCameras] = useState<{ id: string; name: string; state: string }[] | null>(null);
+  const [msg, setMsg] = useState('');
+  const [loading, setLoading] = useState(false);
+  const selected = String(vals.camerasSelected ?? '')
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean);
+
+  const load = async () => {
+    setLoading(true);
+    setMsg('');
+    try {
+      const r = await api<{ ok: boolean; message: string; cameras: { id: string; name: string; state: string }[] }>('/admin/protect/test', 'POST', {
+        url: String(vals.protectUrl ?? '') || undefined,
+        apiKey: String(vals.protectApiKey ?? '') || undefined,
+        verifyTls: !!vals.protectVerifyTls,
+      });
+      if (!r.ok) setMsg(r.message);
+      setCameras(r.cameras);
+    } catch (e: any) {
+      setMsg(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const write = (ids: string[]) => set('camerasSelected', ids.join(','));
+  const move = (i: number, dir: -1 | 1) => {
+    const next = [...selected];
+    const j = i + dir;
+    if (j < 0 || j >= next.length) return;
+    [next[i], next[j]] = [next[j], next[i]];
+    write(next);
+  };
+  const nameOf = (id: string) => cameras?.find((c) => c.id === id)?.name ?? id;
+
+  return (
+    <div className="field">
+      <span className="field-label">Cameras on Home</span>
+      <div className="row">
+        <button type="button" className="btn btn-sm" onClick={load} disabled={loading}>
+          {loading ? 'Loading…' : cameras ? 'Reload cameras' : 'Choose cameras'}
+        </button>
+        <span className="muted small">{selected.length ? `${selected.length} selected, in this order` : 'None selected: all cameras are shown'}</span>
+      </div>
+      {msg && <div className="alert">{msg}</div>}
+      {cameras && (
+        <div className="cam-picker">
+          {selected.map((id, i) => (
+            <div key={id} className="cam-picker-row">
+              <span className="cam-picker-num">{i + 1}</span>
+              <span className="grow">{nameOf(id)}</span>
+              <button type="button" className="icon-btn" onClick={() => move(i, -1)} disabled={i === 0} aria-label="Move up">
+                <Icon name="up" size={16} />
+              </button>
+              <button type="button" className="icon-btn" onClick={() => move(i, 1)} disabled={i === selected.length - 1} aria-label="Move down">
+                <Icon name="down" size={16} />
+              </button>
+              <button type="button" className="icon-btn" onClick={() => write(selected.filter((x) => x !== id))} aria-label="Remove">
+                <Icon name="x" size={16} />
+              </button>
+            </div>
+          ))}
+          {cameras
+            .filter((c) => !selected.includes(c.id))
+            .map((c) => (
+              <div key={c.id} className="cam-picker-row is-off">
+                <span className="cam-picker-num" />
+                <span className="grow">
+                  {c.name}
+                  {c.state !== 'CONNECTED' && <span className="muted small"> (offline)</span>}
+                </span>
+                <button type="button" className="btn btn-sm" onClick={() => write([...selected, c.id])}>
+                  <Icon name="plus" size={14} /> Add
+                </button>
+              </div>
+            ))}
+          {cameras.length === 0 && <span className="muted small">No cameras found.</span>}
+        </div>
+      )}
+    </div>
   );
 }

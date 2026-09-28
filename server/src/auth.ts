@@ -17,7 +17,7 @@ export interface UserRow {
   color: string;
   avatar: string | null;
   can_login: boolean;
-  prefs: { slideshowEnabled?: boolean; slideshowIdleMinutes?: number } | null;
+  prefs: { slideshowEnabled?: boolean; slideshowIdleMinutes?: number; camerasMode?: string; doorbellPopup?: boolean } | null;
   created_at: Date;
 }
 
@@ -54,6 +54,8 @@ export function publicUser(u: UserRow) {
     prefs: {
       slideshowEnabled: u.prefs?.slideshowEnabled ?? true,
       slideshowIdleMinutes: u.prefs?.slideshowIdleMinutes ?? 1,
+      camerasMode: u.prefs?.camerasMode ?? 'default',
+      doorbellPopup: u.prefs?.doorbellPopup ?? true,
     },
   };
 }

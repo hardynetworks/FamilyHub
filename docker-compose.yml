@@ -18,6 +18,15 @@ services:
       db:
         condition: service_healthy
 
+  # Live camera video relay (UniFi Protect RTSPS -> browser). No ports are published:
+  # FamilyHub talks to it on the internal network and proxies the player to signed-in users.
+  go2rtc:
+    image: alexxit/go2rtc:latest
+    container_name: familyhub-go2rtc
+    restart: unless-stopped
+    volumes:
+      - familyhub-go2rtc:/config
+
   db:
     image: postgres:16-alpine
     container_name: familyhub-db
@@ -37,3 +46,4 @@ services:
 volumes:
   familyhub-db:
   familyhub-data:
+  familyhub-go2rtc:
