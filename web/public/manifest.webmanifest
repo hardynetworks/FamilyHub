@@ -1,0 +1,10 @@
+{
+  "name": "FamilyHub",
+  "short_name": "FamilyHub",
+  "description": "Family calendar, lists, chores and meal planning",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f3ee",
+  "theme_color": "#e8664a",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

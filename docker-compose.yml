@@ -1,0 +1,39 @@
+services:
+  app:
+    # Prebuilt image from GitHub Actions. To build locally instead: docker compose up -d --build
+    image: ghcr.io/hardynetworks/familyhub:latest
+    build: .
+    container_name: familyhub
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgres://familyhub:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/familyhub
+    volumes:
+      - familyhub-data:/data   # auto-generated session/encryption keys
+    ports:
+      - "${KINBOARD_PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    container_name: familyhub-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: familyhub
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: familyhub
+    volumes:
+      - familyhub-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U familyhub -d familyhub"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  familyhub-db:
+  familyhub-data:
