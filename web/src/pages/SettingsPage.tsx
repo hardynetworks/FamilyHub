@@ -26,6 +26,7 @@ export function SettingsPage({ onLogout }: { onLogout: () => void }) {
         </button>
       </header>
       <ProfileCard />
+      <SlideshowPrefsCard />
       <FamilyCard />
       <GoogleCard />
       {me.role === 'admin' && <AppSettings />}
@@ -58,6 +59,63 @@ function ProfileCard() {
         </div>
       </div>
       {edit && <MemberModal member={me} self onClose={() => { setEdit(false); qc.invalidateQueries({ queryKey: ['auth'] }); }} />}
+    </section>
+  );
+}
+
+function SlideshowPrefsCard() {
+  const me = useMe();
+  const qc = useQueryClient();
+  const toast = useToast();
+  const [minutes, setMinutes] = useState(String(me.prefs.slideshowIdleMinutes));
+  const save = async (prefs: Partial<Member['prefs']>) => {
+    try {
+      await api(`/members/${me.id}`, 'PATCH', { prefs });
+      await qc.invalidateQueries({ queryKey: ['auth'] });
+      toast('Slideshow setting saved', 'success');
+    } catch (e: any) {
+      toast(e.message, 'error');
+    }
+  };
+  const commitMinutes = () => {
+    const n = Math.round(Number(minutes));
+    if (!Number.isFinite(n) || n < 1 || n > 240) {
+      setMinutes(String(me.prefs.slideshowIdleMinutes));
+      return toast('Enter a number of minutes between 1 and 240', 'error');
+    }
+    if (n !== me.prefs.slideshowIdleMinutes) save({ slideshowIdleMinutes: n });
+  };
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h2>
+          <Icon name="image" size={18} /> Photo slideshow
+        </h2>
+      </div>
+      <div className="form">
+        <label className="toggle">
+          <input type="checkbox" checked={me.prefs.slideshowEnabled} onChange={(e) => save({ slideshowEnabled: e.target.checked })} /> Show a photo slideshow on the Home page
+          when I'm idle
+        </label>
+        {me.prefs.slideshowEnabled && (
+          <Field label="Start after (minutes of inactivity)">
+            <input
+              className="input input-narrow"
+              type="number"
+              min={1}
+              max={240}
+              value={minutes}
+              onChange={(e) => setMinutes(e.target.value)}
+              onBlur={commitMinutes}
+              onKeyDown={(e) => e.key === 'Enter' && commitMinutes()}
+            />
+          </Field>
+        )}
+        <p className="muted small">
+          These settings are yours only. Touching the screen, clicking or pressing a key closes the slideshow. An admin chooses where the photos come from under App settings →
+          Photos.
+        </p>
+      </div>
     </section>
   );
 }

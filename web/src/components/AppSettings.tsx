@@ -4,13 +4,16 @@ import { AdminSettings, api } from '../lib/api';
 import { useToast } from '../lib/hooks';
 import { CopyField, Field, Icon, TimezoneList } from './ui';
 
-type Kind = 'text' | 'url' | 'secret' | 'bool' | 'number' | 'timezone';
+type Kind = 'text' | 'url' | 'secret' | 'bool' | 'number' | 'timezone' | 'select' | 'textarea' | 'custom';
 interface FieldSpec {
   key: string;
   label: string;
   kind: Kind;
   hint?: ReactNode;
   placeholder?: string;
+  options?: { value: string; label: string }[];
+  /** Only show this field when the predicate is true (e.g. depends on another field). */
+  show?: (vals: Values) => boolean;
 }
 
 type Values = Record<string, string | number | boolean>;
@@ -118,6 +121,79 @@ export function AppSettings() {
             }),
         }}
         footerNote="After saving, each person connects their own Google account in the Google Calendar card above."
+      />
+
+      <SettingsSection
+        data={d}
+        title="Photos (Home screensaver)"
+        status={
+          d.settings.photosSource?.value && d.settings.photosSource.value !== 'off'
+            ? { ok: true, text: 'On' }
+            : { ok: false, text: 'Off' }
+        }
+        intro={
+          <p className="muted small">
+            When someone's been idle on the Home page, FamilyHub fills the screen with a slideshow of these photos. Each person can turn it off or change the wait time
+            under <strong>Settings → Photo slideshow</strong>.
+          </p>
+        }
+        fields={[
+          {
+            key: 'photosSource',
+            label: 'Photo source',
+            kind: 'select',
+            options: [
+              { value: 'off', label: 'Off' },
+              { value: 'amazon', label: 'Amazon Photos shared links' },
+              { value: 'immich', label: 'Immich' },
+              { value: 'both', label: 'Amazon Photos + Immich' },
+            ],
+          },
+          {
+            key: 'photosAmazonLinks',
+            label: 'Amazon Photos share links',
+            kind: 'textarea',
+            placeholder: 'https://www.amazon.com/photos/shared/…',
+            show: (v) => v.photosSource === 'amazon' || v.photosSource === 'both',
+            hint: (
+              <>
+                One link per line. In Amazon Photos, open an album or group, choose <strong>Share → Copy link</strong>, and allow anyone with the link to view. Amazon has no
+                official API, so this reads the same public page as the link; if Amazon changes it, photos may stop loading until FamilyHub is updated.
+              </>
+            ),
+          },
+          {
+            key: 'immichUrl',
+            label: 'Immich server URL',
+            kind: 'url',
+            placeholder: 'https://photos.example.com',
+            show: (v) => v.photosSource === 'immich' || v.photosSource === 'both',
+          },
+          {
+            key: 'immichApiKey',
+            label: 'Immich API key',
+            kind: 'secret',
+            show: (v) => v.photosSource === 'immich' || v.photosSource === 'both',
+            hint: 'In Immich: Account settings → API keys → New API key. Read access to albums and assets is enough.',
+          },
+          { key: 'immichAlbumIds', label: 'Immich albums', kind: 'custom', show: (v) => v.photosSource === 'immich' || v.photosSource === 'both' },
+          { key: 'photosSlideSeconds', label: 'Seconds per photo', kind: 'number', show: (v) => v.photosSource !== 'off' },
+          { key: 'photosRefreshMinutes', label: 'Check for new photos every (minutes)', kind: 'number', show: (v) => v.photosSource !== 'off' },
+        ]}
+        extra={(vals, set) =>
+          vals.photosSource === 'immich' || vals.photosSource === 'both' ? <ImmichAlbumPicker vals={vals} set={set} /> : null
+        }
+        test={{
+          label: 'Load photos',
+          run: async () => {
+            const r = await api<{ total: number; counts: { amazon: number; immich: number }; errors: string[] }>('/admin/photos/refresh', 'POST');
+            const parts = [r.counts.amazon ? `${r.counts.amazon} from Amazon` : '', r.counts.immich ? `${r.counts.immich} from Immich` : ''].filter(Boolean);
+            if (r.errors.length) return { ok: false, message: `${r.total} photos found. ${r.errors.join(' · ')}` };
+            if (!r.total) return { ok: false, message: 'No photos found. Save your changes first, then check the links or albums.' };
+            return { ok: true, message: `Found ${r.total} photos (${parts.join(', ')}).` };
+          },
+        }}
+        footerNote="Save first, then Load photos to check."
       />
 
       <section className="card">
@@ -236,7 +312,7 @@ function SettingsSection({
       <div className="form">
         {fields.map((f) => {
           const s = data.settings[f.key];
-          if (!s) return null;
+          if (!s || f.kind === 'custom' || (f.show && !f.show(vals))) return null;
           const locked = s.lockedByEnv;
           const lockHint = locked ? (
             <>
@@ -253,6 +329,33 @@ function SettingsSection({
                 </label>
                 {lockHint && <span className="field-hint">{lockHint}</span>}
               </div>
+            );
+          }
+          if (f.kind === 'select') {
+            return (
+              <Field key={f.key} label={f.label} hint={lockHint}>
+                <select className="input" disabled={locked} value={String(vals[f.key] ?? '')} onChange={(e) => set(f.key, e.target.value)}>
+                  {f.options!.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            );
+          }
+          if (f.kind === 'textarea') {
+            return (
+              <Field key={f.key} label={f.label} hint={lockHint}>
+                <textarea
+                  className="input"
+                  rows={3}
+                  disabled={locked}
+                  placeholder={f.placeholder}
+                  value={String(vals[f.key] ?? '')}
+                  onChange={(e) => set(f.key, e.target.value)}
+                />
+              </Field>
             );
           }
           if (f.kind === 'secret') {
@@ -309,5 +412,63 @@ function SettingsSection({
         </button>
       </div>
     </section>
+  );
+}
+
+function ImmichAlbumPicker({ vals, set }: { vals: Values; set: (k: string, v: string) => void }) {
+  const [albums, setAlbums] = useState<{ id: string; name: string; count: number }[] | null>(null);
+  const [msg, setMsg] = useState('');
+  const [loading, setLoading] = useState(false);
+  const selected = String(vals.immichAlbumIds ?? '')
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean);
+
+  const load = async () => {
+    setLoading(true);
+    setMsg('');
+    try {
+      const r = await api<{ ok: boolean; message?: string; albums: { id: string; name: string; count: number }[] }>('/admin/immich/albums', 'POST', {
+        url: String(vals.immichUrl ?? '') || undefined,
+        apiKey: String(vals.immichApiKey ?? '') || undefined,
+      });
+      if (!r.ok) setMsg(r.message ?? 'Could not load albums');
+      setAlbums(r.albums);
+    } catch (e: any) {
+      setMsg(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggle = (id: string) => {
+    const next = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id];
+    set('immichAlbumIds', next.join(','));
+  };
+
+  return (
+    <div className="field">
+      <span className="field-label">Immich albums</span>
+      <div className="row">
+        <button type="button" className="btn btn-sm" onClick={load} disabled={loading}>
+          {loading ? 'Loading…' : albums ? 'Reload albums' : 'Choose albums'}
+        </button>
+        <span className="muted small">
+          {selected.length ? `${selected.length} album${selected.length === 1 ? '' : 's'} selected` : 'None selected: your Immich favorites will be shown'}
+        </span>
+      </div>
+      {msg && <div className="alert">{msg}</div>}
+      {albums && (
+        <div className="album-list">
+          {albums.length === 0 && <span className="muted small">No albums found.</span>}
+          {albums.map((a) => (
+            <label key={a.id} className="toggle">
+              <input type="checkbox" checked={selected.includes(a.id)} onChange={() => toggle(a.id)} /> {a.name}{' '}
+              <span className="muted small">({a.count})</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

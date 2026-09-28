@@ -24,6 +24,13 @@ export interface Settings {
   googleSyncIntervalMinutes: number;
   googlePastDays: number;
   googleFutureDays: number;
+  photosSource: string;
+  photosAmazonLinks: string;
+  immichUrl: string;
+  immichApiKey: string;
+  immichAlbumIds: string;
+  photosSlideSeconds: number;
+  photosRefreshMinutes: number;
 }
 export type SettingKey = keyof Settings;
 
@@ -50,6 +57,13 @@ export const DEFS: Record<SettingKey, Def> = {
   googleSyncIntervalMinutes: { env: 'GOOGLE_SYNC_INTERVAL_MINUTES', def: 5 },
   googlePastDays: { env: 'GOOGLE_SYNC_PAST_DAYS', def: 60 },
   googleFutureDays: { env: 'GOOGLE_SYNC_FUTURE_DAYS', def: 400 },
+  photosSource: { env: 'PHOTOS_SOURCE', def: 'off' }, // off | amazon | immich | both
+  photosAmazonLinks: { env: 'PHOTOS_AMAZON_LINKS', def: '' }, // one shared-album link per line
+  immichUrl: { env: 'IMMICH_URL', def: '' },
+  immichApiKey: { env: 'IMMICH_API_KEY', def: '', secret: true },
+  immichAlbumIds: { env: 'IMMICH_ALBUM_IDS', def: '' }, // comma-separated; empty = favorites
+  photosSlideSeconds: { env: 'PHOTOS_SLIDE_SECONDS', def: 10 },
+  photosRefreshMinutes: { env: 'PHOTOS_REFRESH_MINUTES', def: 60 },
 };
 
 export const SETTING_KEYS = Object.keys(DEFS) as SettingKey[];

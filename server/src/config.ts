@@ -66,6 +66,33 @@ export const config = {
   },
 };
 
+export function photosConfig() {
+  const source = getSetting('photosSource');
+  const amazonLinks = getSetting('photosAmazonLinks')
+    .split(/[\s,]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const immichUrl = getSetting('immichUrl').trim().replace(/\/+$/, '').replace(/\/api$/, '');
+  const immichApiKey = getSetting('immichApiKey');
+  const useAmazon = (source === 'amazon' || source === 'both') && amazonLinks.length > 0;
+  const useImmich = (source === 'immich' || source === 'both') && !!immichUrl && !!immichApiKey;
+  return {
+    source,
+    enabled: useAmazon || useImmich,
+    useAmazon,
+    useImmich,
+    amazonLinks,
+    immichUrl,
+    immichApiKey,
+    immichAlbumIds: getSetting('immichAlbumIds')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+    slideSeconds: Math.min(300, Math.max(3, getSetting('photosSlideSeconds') || 10)),
+    refreshMinutes: Math.max(5, getSetting('photosRefreshMinutes') || 60),
+  };
+}
+
 /** Public base URL: the configured App URL, or the address this request came in on. */
 export function baseUrl(req: Request): string {
   return config.appUrl || `${req.protocol}://${req.get('host')}`;

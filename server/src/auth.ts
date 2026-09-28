@@ -17,6 +17,7 @@ export interface UserRow {
   color: string;
   avatar: string | null;
   can_login: boolean;
+  prefs: { slideshowEnabled?: boolean; slideshowIdleMinutes?: number } | null;
   created_at: Date;
 }
 
@@ -50,6 +51,10 @@ export function publicUser(u: UserRow) {
     canLogin: u.can_login,
     hasPassword: !!u.password_hash,
     linkedSso: !!u.oidc_sub,
+    prefs: {
+      slideshowEnabled: u.prefs?.slideshowEnabled ?? true,
+      slideshowIdleMinutes: u.prefs?.slideshowIdleMinutes ?? 1,
+    },
   };
 }
 

@@ -378,3 +378,22 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .test-result.ok { background: rgba(43, 182, 115, 0.12); color: var(--ok); }
 .test-result.bad { background: rgba(201, 60, 60, 0.1); color: var(--danger); }
 .input:disabled { opacity: 0.6; }
+
+/* ---------- Photo slideshow (idle screensaver) ---------- */
+.hero-right { display: flex; align-items: center; gap: 16px; }
+.input-narrow { max-width: 140px; }
+.album-list { display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow-y: auto; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.slideshow { position: fixed; inset: 0; z-index: 1000; background: #000; overflow: hidden; cursor: none; }
+.slide { position: absolute; inset: 0; transition: opacity 1.4s ease; }
+.slide-in { opacity: 1; animation: slide-fade 1.4s ease; }
+.slide-out { opacity: 0; }
+@keyframes slide-fade { from { opacity: 0; } }
+.slide-bg { position: absolute; inset: -40px; background-size: cover; background-position: center; filter: blur(36px) brightness(0.55); transform: scale(1.1); }
+.slide-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; animation: kenburns linear forwards; transform-origin: center; }
+@keyframes kenburns { from { transform: scale(1); } to { transform: scale(1.06); } }
+@media (prefers-reduced-motion: reduce) { .slide-img { animation: none; } .slide { transition: none; } }
+.slide-info { position: absolute; left: 40px; bottom: 36px; color: #fff; text-shadow: 0 2px 16px rgba(0, 0, 0, 0.6); }
+.slide-time { font-size: clamp(48px, 9vw, 110px); font-weight: 800; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.slide-date { font-size: clamp(18px, 2.4vw, 30px); font-weight: 600; opacity: 0.92; margin-top: 6px; }
+.slide-taken { position: absolute; right: 40px; bottom: 40px; color: rgba(255, 255, 255, 0.85); font-size: 18px; font-weight: 600; text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6); }
+@media (max-width: 560px) { .slide-info { left: 20px; bottom: 24px; } .slide-taken { right: 20px; bottom: 28px; font-size: 14px; } }

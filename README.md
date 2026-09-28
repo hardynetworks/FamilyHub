@@ -88,6 +88,18 @@ Account matching on SSO login works in this order: an existing link, then a fami
 - **Read-only calendars.** Calendars shared with you as read-only (holidays, school calendars, etc.) can be synced and viewed but not edited.
 - **Token storage.** OAuth tokens and client secrets are encrypted at rest (AES-256-GCM) with the auto-generated key in `/data/secrets.json`.
 
+## Photo slideshow (Home screensaver)
+
+When someone has been idle on the Home page (1 minute by default), a full-screen slideshow of family photos appears with the time and date. Any touch, click, key press or mouse movement closes it. There's also a **Photos** button on Home to start it by hand.
+
+- **Per person:** go to **Settings → Photo slideshow** to turn it on or off and change how many minutes of inactivity start it.
+- **Photo sources (admin):** go to **Settings → App settings → Photos**:
+  - **Amazon Photos shared links.** In Amazon Photos, choose **Share → Copy link** on an album or group, allow anyone with the link to view, and paste the link, one per line. Amazon has no public API, so FamilyHub reads the same public data as the share page. No Amazon login is stored, but if Amazon changes that page, photos may stop loading until FamilyHub is updated.
+  - **Immich.** Enter your server URL and an API key, then pick albums. If you don't pick any, your Immich favorites are used.
+  - Click **Load photos** to check what was found.
+
+Images are fetched by the FamilyHub server and passed on to the browser, so the browser never needs access to Amazon or Immich, and your Immich API key stays on the server.
+
 ## Configuration reference
 
 Only `POSTGRES_PASSWORD` has to be set in `.env`: the app needs it to reach the database where every other setting is stored.

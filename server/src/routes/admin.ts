@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { fetchDiscovery } from '../auth';
 import { baseUrl, config, isValidTimezone } from '../config';
 import { testGoogleCredentials } from '../google';
+import { getPhotos, immichAlbums } from '../photos';
 import { SETTING_KEYS, SettingKey, describeSettings, getSetting, isLockedByEnv, saveSettings } from '../settings';
 import { HttpError, parse } from '../util';
 
@@ -64,6 +65,19 @@ const Patch = z
     googleSyncIntervalMinutes: z.number().int().min(1).max(1440).nullable().optional(),
     googlePastDays: z.number().int().min(1).max(3650).nullable().optional(),
     googleFutureDays: z.number().int().min(1).max(3650).nullable().optional(),
+    photosSource: z.enum(['off', 'amazon', 'immich', 'both']).nullable().optional(),
+    photosAmazonLinks: z.string().max(10000).nullable().optional(),
+    immichUrl: z
+      .string()
+      .trim()
+      .max(500)
+      .refine((v) => v === '' || /^https?:\/\//.test(v), 'must start with http:// or https://')
+      .nullable()
+      .optional(),
+    immichApiKey: z.string().max(500).nullable().optional(),
+    immichAlbumIds: z.string().max(5000).nullable().optional(),
+    photosSlideSeconds: z.number().int().min(3).max(300).nullable().optional(),
+    photosRefreshMinutes: z.number().int().min(5).max(1440).nullable().optional(),
   })
   .strict();
 
@@ -75,7 +89,7 @@ adminRouter.put('/settings', async (req, res) => {
     // Empty strings clear a value (fall back to default); empty secrets mean "keep the current one".
     if (patch[k] === '') patch[k] = null;
   }
-  for (const k of ['oidcClientSecret', 'googleClientSecret'] as const) {
+  for (const k of ['oidcClientSecret', 'googleClientSecret', 'immichApiKey'] as const) {
     if (patch[k] === null && req.body[k] === '') delete patch[k];
   }
   if (patch.appUrl) patch.appUrl = String(patch.appUrl).replace(/\/+$/, '');
@@ -135,5 +149,25 @@ adminRouter.post('/test/google', async (req, res) => {
     res.json(await testGoogleCredentials(clientId, clientSecret, `${baseUrl(req)}/api/google/callback`));
   } catch (e: any) {
     res.json({ ok: false, message: `Could not reach Google: ${e.message}` });
+  }
+});
+
+/** Reload photos now and report what was found (used by the "Load photos" button). */
+adminRouter.post('/photos/refresh', async (_req, res) => {
+  const c = await getPhotos(true);
+  res.json({ total: c.photos.length, counts: c.counts, errors: c.errors });
+});
+
+/** List Immich albums for the album picker. Uses the form's unsaved URL/key if given. */
+adminRouter.post('/immich/albums', async (req, res) => {
+  const b = parse(z.object({ url: z.string().trim().max(500).optional(), apiKey: z.string().max(500).optional() }), req.body);
+  const url = b.url || getSetting('immichUrl');
+  const apiKey = b.apiKey || getSetting('immichApiKey');
+  if (!url || !apiKey) throw new HttpError(400, 'Enter the Immich URL and API key first');
+  try {
+    res.json({ ok: true, albums: await immichAlbums(url, apiKey) });
+  } catch (e: any) {
+    const msg = e.status === 401 ? 'Immich rejected the API key' : `Could not reach Immich: ${e.cause?.code ?? e.message}`;
+    res.json({ ok: false, message: msg, albums: [] });
   }
 });

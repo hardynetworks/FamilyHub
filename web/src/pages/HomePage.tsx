@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { EventModal } from '../components/EventModal';
+import { IdleSlideshow, usePhotos } from '../components/Slideshow';
 import { Avatar, Empty, Icon } from '../components/ui';
 import { CalEvent, Chore, List, ListItem, Meal, api, qs } from '../lib/api';
 import { addDays, addDaysYmd, fmtDayLong, fmtTime, relativeDayLabel, startOfDay, today, ymd } from '../lib/dates';
@@ -29,6 +30,9 @@ export function HomePage() {
   const { members, byId } = useMembers();
   const t = today();
   const [editing, setEditing] = useState<CalEvent | null>(null);
+  const [slideSignal, setSlideSignal] = useState(0);
+  const photoList = usePhotos(me.prefs.slideshowEnabled);
+  const canShowPhotos = !!photoList.data?.enabled && (photoList.data?.photos.length ?? 0) > 0;
 
   const start = startOfDay(now);
   const events = useQuery({
@@ -73,7 +77,14 @@ export function HomePage() {
           <div className="hero-greeting">{greeting(now.getHours())}, {me.name.split(' ')[0]}</div>
           <div className="hero-date">{fmtDayLong(now)}</div>
         </div>
-        <div className="hero-time">{fmtTime(now)}</div>
+        <div className="hero-right">
+          {canShowPhotos && (
+            <button className="btn btn-sm" onClick={() => setSlideSignal(Date.now())} title="Start the photo slideshow">
+              <Icon name="image" size={16} /> Photos
+            </button>
+          )}
+          <div className="hero-time">{fmtTime(now)}</div>
+        </div>
       </header>
 
       <div className="home-grid">
@@ -176,6 +187,7 @@ export function HomePage() {
         )}
       </div>
       {editing && <EventModal event={editing} onClose={() => setEditing(null)} />}
+      <IdleSlideshow startSignal={slideSignal} />
     </div>
   );
 }

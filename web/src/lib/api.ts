@@ -32,6 +32,14 @@ export interface Member {
   canLogin: boolean;
   hasPassword: boolean;
   linkedSso: boolean;
+  prefs: { slideshowEnabled: boolean; slideshowIdleMinutes: number };
+}
+
+export interface PhotoList {
+  enabled: boolean;
+  slideSeconds: number;
+  photos: { id: string; takenAt: string | null; width?: number; height?: number }[];
+  errors?: string[];
 }
 
 export interface AuthStatus {

@@ -57,6 +57,13 @@ membersRouter.patch('/:id', async (req, res) => {
       avatar: z.string().max(16).nullish(),
       canLogin: z.boolean().optional(),
       unlinkSso: z.boolean().optional(),
+      prefs: z
+        .object({
+          slideshowEnabled: z.boolean().optional(),
+          slideshowIdleMinutes: z.number().int().min(1).max(240).optional(),
+        })
+        .strict()
+        .optional(),
     }),
     req.body,
   );
@@ -88,7 +95,8 @@ membersRouter.patch('/:id', async (req, res) => {
        color = coalesce($7, color),
        avatar = case when $8::boolean then $9 else avatar end,
        can_login = coalesce($10, can_login),
-       oidc_sub = case when $11::boolean then null else oidc_sub end
+       oidc_sub = case when $11::boolean then null else oidc_sub end,
+       prefs = case when $12::jsonb is null then prefs else prefs || $12::jsonb end
      where id = $1 returning *`,
     [
       req.params.id,
@@ -102,6 +110,7 @@ membersRouter.patch('/:id', async (req, res) => {
       b.avatar ?? null,
       b.canLogin ?? null,
       me.role === 'admin' && !!b.unlinkSso,
+      b.prefs ? JSON.stringify(b.prefs) : null,
     ],
   );
   res.json(publicUser(u!));

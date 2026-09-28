@@ -149,6 +149,10 @@ create index meal_plan_date_idx on meal_plan (date);
 insert into lists (name, kind, emoji, sort) values ('Groceries', 'shopping', '🛒', 0), ('To-Do', 'todo', '✅', 1);
 `,
   },
+  {
+    id: '002_user_prefs',
+    sql: `alter table users add column prefs jsonb not null default '{}'::jsonb;`,
+  },
 ];
 
 export async function migrate(): Promise<void> {
