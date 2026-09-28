@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useState } from 'react';
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { DoorbellPopup } from './components/Cameras';
+import { resolveLayout, useApplyTheme, useHomeLayout } from './lib/layout';
 import { Avatar, Icon, Spinner } from './components/ui';
 import { api } from './lib/api';
 import { ToastContext, ToastFn, useAuthStatus } from './lib/hooks';
@@ -57,6 +58,8 @@ function Shell({ appName }: { appName: string }) {
   const { data } = useAuthStatus();
   const qc = useQueryClient();
   const me = data!.user!;
+  const layout = useHomeLayout();
+  useApplyTheme(layout.isSuccess ? resolveLayout(layout.data).theme : undefined);
   const logout = async () => {
     await api('/auth/logout', 'POST');
     qc.clear();

@@ -30,6 +30,7 @@ export interface Member {
   color: string;
   avatar: string | null;
   canLogin: boolean;
+  memberType: 'adult' | 'child';
   hasPassword: boolean;
   linkedSso: boolean;
   prefs: { slideshowEnabled: boolean; slideshowIdleMinutes: number; camerasMode: CamerasMode | 'default'; doorbellPopup: boolean };
@@ -73,6 +74,7 @@ export interface PhotoList {
 
 export interface AuthStatus {
   appName: string;
+  familyName?: string;
   user: Member | null;
   needsSetup: boolean;
   localLogin: boolean;

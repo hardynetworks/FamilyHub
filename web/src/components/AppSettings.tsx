@@ -18,259 +18,272 @@ interface FieldSpec {
 
 type Values = Record<string, string | number | boolean>;
 
-/** Admin-only: everything that used to live in .env, editable in the app. */
-export function AppSettings() {
+export type AppSection = 'general' | 'signin' | 'google' | 'weather' | 'photos' | 'cameras' | 'security';
+
+/** Admin-only app configuration, one section per Settings tab. */
+export function AppSettings({ section }: { section: AppSection }) {
   const q = useQuery({ queryKey: ['admin-settings'], queryFn: () => api<AdminSettings>('/admin/settings') });
   if (!q.data) return null;
   const d = q.data;
   return (
     <>
-      <h2 className="section-title" id="app-settings">App settings <span className="tag">Admins only</span></h2>
 
-      <SettingsSection
-        data={d}
-        title="General"
-        fields={[
-          { key: 'appName', label: 'App name', kind: 'text', placeholder: 'FamilyHub' },
-          {
-            key: 'appUrl',
-            label: 'Public address (App URL)',
-            kind: 'url',
-            placeholder: d.detectedUrl,
-            hint: <>The address your family uses, e.g. <code>https://family.example.com</code>. Sign-in and Google redirect addresses are built from it. Leave empty to use whatever address the browser used.</>,
-          },
-          { key: 'timezone', label: 'Household time zone', kind: 'timezone', hint: 'Used for repeating events, "today" for chores, and Google sync.' },
-        ]}
-        extra={(vals, set) =>
-          !vals.appUrl && d.detectedUrl ? (
-            <button type="button" className="link-btn" onClick={() => set('appUrl', d.detectedUrl)}>
-              Use this address ({d.detectedUrl})
-            </button>
-          ) : null
-        }
-      />
+      {section === 'general' && (
+        <SettingsSection
+          data={d}
+          title="General"
+          fields={[
+            { key: 'appName', label: 'App name', kind: 'text', placeholder: 'FamilyHub' },
+            {
+              key: 'appUrl',
+              label: 'Public address (App URL)',
+              kind: 'url',
+              placeholder: d.detectedUrl,
+              hint: <>The address your family uses, e.g. <code>https://family.example.com</code>. Sign-in and Google redirect addresses are built from it. Leave empty to use whatever address the browser used.</>,
+            },
+            { key: 'timezone', label: 'Household time zone', kind: 'timezone', hint: 'Used for repeating events, "today" for chores, and Google sync.' },
+          ]}
+          extra={(vals, set) =>
+            !vals.appUrl && d.detectedUrl ? (
+              <button type="button" className="link-btn" onClick={() => set('appUrl', d.detectedUrl)}>
+                Use this address ({d.detectedUrl})
+              </button>
+            ) : null
+          }
+        />
+      )}
 
-      <SettingsSection
-        data={d}
-        title="Sign-in: Authentik (SSO)"
-        status={d.effective.oidcEnabled ? { ok: true, text: 'Enabled' } : { ok: false, text: 'Not set up' }}
-        intro={
-          <>
+      {section === 'signin' && (
+        <SettingsSection
+          data={d}
+          title="Sign-in: Authentik (SSO)"
+          status={d.effective.oidcEnabled ? { ok: true, text: 'Enabled' } : { ok: false, text: 'Not set up' }}
+          intro={
+            <>
+              <p className="muted small">
+                In Authentik, create an <strong>OAuth2/OpenID Provider</strong> (client type <em>Confidential</em>) with this redirect URI, then an Application that uses it.
+              </p>
+              <CopyField value={d.redirectUris.oidc} />
+            </>
+          }
+          fields={[
+            {
+              key: 'oidcIssuer',
+              label: 'Issuer URL',
+              kind: 'url',
+              placeholder: 'https://auth.example.com/application/o/familyhub/',
+              hint: 'Shown as "OpenID Configuration Issuer" on the provider page in Authentik.',
+            },
+            { key: 'oidcClientId', label: 'Client ID', kind: 'text' },
+            { key: 'oidcClientSecret', label: 'Client secret', kind: 'secret' },
+            { key: 'oidcLabel', label: 'Button label', kind: 'text', placeholder: 'Sign in with Authentik' },
+            { key: 'oidcAdminGroup', label: 'Admin group (optional)', kind: 'text', placeholder: 'familyhub-admins', hint: 'Members of this Authentik group become admins; others become members. Checked every sign-in.' },
+            { key: 'oidcScopes', label: 'Scopes', kind: 'text', placeholder: 'openid profile email' },
+            { key: 'oidcAutoCreate', label: 'Create a family member automatically on first SSO sign-in', kind: 'bool', hint: 'If off, an admin must add the person (with their email) first.' },
+            {
+              key: 'localLogin',
+              label: 'Allow email + password sign-in',
+              kind: 'bool',
+              hint: 'Turning this off requires Authentik to be set up and you to have signed in with it once. Password sign-in stays on automatically while SSO isn’t configured.',
+            },
+          ]}
+          test={{
+            label: 'Test connection',
+            run: (vals) => api<TestResult>('/admin/test/oidc', 'POST', { issuer: String(vals.oidcIssuer ?? '') || undefined }),
+          }}
+        />
+      )}
+
+      {section === 'google' && (
+        <SettingsSection
+          data={d}
+          title="Google Calendar"
+          status={d.effective.googleEnabled ? { ok: true, text: 'Enabled' } : { ok: false, text: 'Not set up' }}
+          intro={
+            <>
+              <ol className="steps small">
+                <li>
+                  In <a href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com" target="_blank" rel="noreferrer">Google Cloud Console</a>, enable the <strong>Google Calendar API</strong>.
+                </li>
+                <li>Set up the OAuth consent screen (External), add the calendar scope, then click <strong>Publish app</strong> so access doesn't expire after 7 days.</li>
+                <li>Create an <strong>OAuth client ID → Web application</strong> with this authorized redirect URI:</li>
+              </ol>
+              <CopyField value={d.redirectUris.google} />
+            </>
+          }
+          fields={[
+            { key: 'googleClientId', label: 'Client ID', kind: 'text', placeholder: '1234-abc.apps.googleusercontent.com' },
+            { key: 'googleClientSecret', label: 'Client secret', kind: 'secret' },
+            { key: 'googleSyncIntervalMinutes', label: 'Sync every (minutes)', kind: 'number' },
+            { key: 'googlePastDays', label: 'Keep past events (days)', kind: 'number' },
+            { key: 'googleFutureDays', label: 'Sync ahead (days)', kind: 'number' },
+          ]}
+          test={{
+            label: 'Test credentials',
+            run: (vals) =>
+              api<TestResult>('/admin/test/google', 'POST', {
+                clientId: String(vals.googleClientId ?? '') || undefined,
+                clientSecret: String(vals.googleClientSecret ?? '') || undefined,
+              }),
+          }}
+          footerNote="After saving, each person connects their own Google account under Connections → Google Calendar."
+        />
+      )}
+
+      {section === 'weather' && <WeatherSettings data={d} />}
+
+      {section === 'cameras' && (
+        <SettingsSection
+          data={d}
+          title="Cameras (UniFi Protect)"
+          status={d.settings.protectUrl?.value && d.settings.protectApiKey?.isSet ? { ok: true, text: 'Connected' } : { ok: false, text: 'Not set up' }}
+          intro={
+            <>
+              <p className="muted small">
+                Shows your UniFi Protect cameras on the Home page and pops up the doorbell camera when someone rings. Requires UniFi Protect 5.3 or newer. Create an API key in
+                your UniFi console under <strong>Settings → Control Plane → Integrations</strong> (or <strong>Protect → Settings → Integrations</strong> on some versions).
+              </p>
+              <p className="muted small">
+                Live video runs through the <code>go2rtc</code> container that ships with FamilyHub's docker-compose file. It stays private and is only reachable through
+                FamilyHub.
+              </p>
+            </>
+          }
+          fields={[
+            { key: 'protectUrl', label: 'UniFi console address', kind: 'url', placeholder: 'https://192.168.1.1' },
+            { key: 'protectApiKey', label: 'API key', kind: 'secret' },
+            {
+              key: 'protectVerifyTls',
+              label: 'Verify the console certificate',
+              kind: 'bool',
+              hint: 'Leave off unless your console has a trusted certificate (UniFi consoles normally use a self-signed one).',
+            },
+            {
+              key: 'camerasMode',
+              label: 'Default display on Home',
+              kind: 'select',
+              options: [
+                { value: 'snapshots_live', label: 'Snapshots, live video when tapped' },
+                { value: 'snapshots', label: 'Snapshots only' },
+                { value: 'live', label: 'Live video' },
+                { value: 'off', label: 'Hidden' },
+              ],
+              hint: 'Each person can override this for themselves under Settings → Screen & alerts.',
+            },
+            { key: 'camerasSelected', label: 'Cameras', kind: 'custom' },
+            { key: 'camerasSnapshotSeconds', label: 'Refresh snapshots every (seconds)', kind: 'number' },
+            {
+              key: 'camerasLiveQuality',
+              label: 'Live video quality',
+              kind: 'select',
+              options: [
+                { value: 'medium', label: 'Medium (recommended for tablets)' },
+                { value: 'high', label: 'High' },
+                { value: 'low', label: 'Low' },
+              ],
+            },
+            { key: 'go2rtcUrl', label: 'Live video relay (go2rtc) URL', kind: 'url', placeholder: 'http://go2rtc:1984', hint: 'Leave as http://go2rtc:1984 when using the included docker-compose file.' },
+            { key: 'doorbellPopupEnabled', label: 'Pop up the doorbell camera when it rings', kind: 'bool' },
+            { key: 'doorbellPopupSeconds', label: 'Doorbell pop-up stays open for (seconds)', kind: 'number', show: (v) => !!v.doorbellPopupEnabled },
+          ]}
+          extra={(vals, set) => <CameraPicker vals={vals} set={set} />}
+          test={{
+            label: 'Test connection',
+            run: (vals) =>
+              api<TestResult>('/admin/protect/test', 'POST', {
+                url: String(vals.protectUrl ?? '') || undefined,
+                apiKey: String(vals.protectApiKey ?? '') || undefined,
+                verifyTls: !!vals.protectVerifyTls,
+                go2rtcUrl: String(vals.go2rtcUrl ?? '') || undefined,
+              }),
+          }}
+        />
+      )}
+
+      {section === 'photos' && (
+        <SettingsSection
+          data={d}
+          title="Photos (Home screensaver)"
+          status={
+            d.settings.photosSource?.value && d.settings.photosSource.value !== 'off'
+              ? { ok: true, text: 'On' }
+              : { ok: false, text: 'Off' }
+          }
+          intro={
             <p className="muted small">
-              In Authentik, create an <strong>OAuth2/OpenID Provider</strong> (client type <em>Confidential</em>) with this redirect URI, then an Application that uses it.
+              When someone's been idle on the Home page, FamilyHub fills the screen with a slideshow of these photos. Each person can turn it off or change the wait time
+              under <strong>Settings → Screen &amp; alerts</strong>.
             </p>
-            <CopyField value={d.redirectUris.oidc} />
-          </>
-        }
-        fields={[
-          {
-            key: 'oidcIssuer',
-            label: 'Issuer URL',
-            kind: 'url',
-            placeholder: 'https://auth.example.com/application/o/familyhub/',
-            hint: 'Shown as "OpenID Configuration Issuer" on the provider page in Authentik.',
-          },
-          { key: 'oidcClientId', label: 'Client ID', kind: 'text' },
-          { key: 'oidcClientSecret', label: 'Client secret', kind: 'secret' },
-          { key: 'oidcLabel', label: 'Button label', kind: 'text', placeholder: 'Sign in with Authentik' },
-          { key: 'oidcAdminGroup', label: 'Admin group (optional)', kind: 'text', placeholder: 'familyhub-admins', hint: 'Members of this Authentik group become admins; others become members. Checked every sign-in.' },
-          { key: 'oidcScopes', label: 'Scopes', kind: 'text', placeholder: 'openid profile email' },
-          { key: 'oidcAutoCreate', label: 'Create a family member automatically on first SSO sign-in', kind: 'bool', hint: 'If off, an admin must add the person (with their email) first.' },
-          {
-            key: 'localLogin',
-            label: 'Allow email + password sign-in',
-            kind: 'bool',
-            hint: 'Turning this off requires Authentik to be set up and you to have signed in with it once. Password sign-in stays on automatically while SSO isn’t configured.',
-          },
-        ]}
-        test={{
-          label: 'Test connection',
-          run: (vals) => api<TestResult>('/admin/test/oidc', 'POST', { issuer: String(vals.oidcIssuer ?? '') || undefined }),
-        }}
-      />
+          }
+          fields={[
+            {
+              key: 'photosSource',
+              label: 'Photo source',
+              kind: 'select',
+              options: [
+                { value: 'off', label: 'Off' },
+                { value: 'amazon', label: 'Amazon Photos shared links' },
+                { value: 'immich', label: 'Immich' },
+                { value: 'both', label: 'Amazon Photos + Immich' },
+              ],
+            },
+            {
+              key: 'photosAmazonLinks',
+              label: 'Amazon Photos share links',
+              kind: 'textarea',
+              placeholder: 'https://www.amazon.com/photos/shared/…',
+              show: (v) => v.photosSource === 'amazon' || v.photosSource === 'both',
+              hint: (
+                <>
+                  One link per line. In Amazon Photos, open an album or group, choose <strong>Share → Copy link</strong>, and allow anyone with the link to view. Amazon has no
+                  official API, so this reads the same public page as the link; if Amazon changes it, photos may stop loading until FamilyHub is updated.
+                </>
+              ),
+            },
+            {
+              key: 'immichUrl',
+              label: 'Immich server URL',
+              kind: 'url',
+              placeholder: 'https://photos.example.com',
+              show: (v) => v.photosSource === 'immich' || v.photosSource === 'both',
+            },
+            {
+              key: 'immichApiKey',
+              label: 'Immich API key',
+              kind: 'secret',
+              show: (v) => v.photosSource === 'immich' || v.photosSource === 'both',
+              hint: 'In Immich: Account settings → API keys → New API key. Read access to albums and assets is enough.',
+            },
+            { key: 'immichAlbumIds', label: 'Immich albums', kind: 'custom', show: (v) => v.photosSource === 'immich' || v.photosSource === 'both' },
+            { key: 'photosSlideSeconds', label: 'Seconds per photo', kind: 'number', show: (v) => v.photosSource !== 'off' },
+            { key: 'photosRefreshMinutes', label: 'Check for new photos every (minutes)', kind: 'number', show: (v) => v.photosSource !== 'off' },
+          ]}
+          extra={(vals, set) =>
+            vals.photosSource === 'immich' || vals.photosSource === 'both' ? <ImmichAlbumPicker vals={vals} set={set} /> : null
+          }
+          test={{
+            label: 'Load photos',
+            run: async () => {
+              const r = await api<{ total: number; counts: { amazon: number; immich: number }; errors: string[] }>('/admin/photos/refresh', 'POST');
+              const parts = [r.counts.amazon ? `${r.counts.amazon} from Amazon` : '', r.counts.immich ? `${r.counts.immich} from Immich` : ''].filter(Boolean);
+              if (r.errors.length) return { ok: false, message: `${r.total} photos found. ${r.errors.join(' · ')}` };
+              if (!r.total) return { ok: false, message: 'No photos found. Save your changes first, then check the links or albums.' };
+              return { ok: true, message: `Found ${r.total} photos (${parts.join(', ')}).` };
+            },
+          }}
+          footerNote="Save first, then Load photos to check."
+        />
+      )}
 
-      <SettingsSection
-        data={d}
-        title="Google Calendar"
-        status={d.effective.googleEnabled ? { ok: true, text: 'Enabled' } : { ok: false, text: 'Not set up' }}
-        intro={
-          <>
-            <ol className="steps small">
-              <li>
-                In <a href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com" target="_blank" rel="noreferrer">Google Cloud Console</a>, enable the <strong>Google Calendar API</strong>.
-              </li>
-              <li>Set up the OAuth consent screen (External), add the calendar scope, then click <strong>Publish app</strong> so access doesn't expire after 7 days.</li>
-              <li>Create an <strong>OAuth client ID → Web application</strong> with this authorized redirect URI:</li>
-            </ol>
-            <CopyField value={d.redirectUris.google} />
-          </>
-        }
-        fields={[
-          { key: 'googleClientId', label: 'Client ID', kind: 'text', placeholder: '1234-abc.apps.googleusercontent.com' },
-          { key: 'googleClientSecret', label: 'Client secret', kind: 'secret' },
-          { key: 'googleSyncIntervalMinutes', label: 'Sync every (minutes)', kind: 'number' },
-          { key: 'googlePastDays', label: 'Keep past events (days)', kind: 'number' },
-          { key: 'googleFutureDays', label: 'Sync ahead (days)', kind: 'number' },
-        ]}
-        test={{
-          label: 'Test credentials',
-          run: (vals) =>
-            api<TestResult>('/admin/test/google', 'POST', {
-              clientId: String(vals.googleClientId ?? '') || undefined,
-              clientSecret: String(vals.googleClientSecret ?? '') || undefined,
-            }),
-        }}
-        footerNote="After saving, each person connects their own Google account in the Google Calendar card above."
-      />
-
-      <WeatherSettings data={d} />
-
-      <SettingsSection
-        data={d}
-        title="Cameras (UniFi Protect)"
-        status={d.settings.protectUrl?.value && d.settings.protectApiKey?.isSet ? { ok: true, text: 'Connected' } : { ok: false, text: 'Not set up' }}
-        intro={
-          <>
-            <p className="muted small">
-              Shows your UniFi Protect cameras on the Home page and pops up the doorbell camera when someone rings. Requires UniFi Protect 5.3 or newer. Create an API key in
-              your UniFi console under <strong>Settings → Control Plane → Integrations</strong> (or <strong>Protect → Settings → Integrations</strong> on some versions).
-            </p>
-            <p className="muted small">
-              Live video runs through the <code>go2rtc</code> container that ships with FamilyHub's docker-compose file. It stays private and is only reachable through
-              FamilyHub.
-            </p>
-          </>
-        }
-        fields={[
-          { key: 'protectUrl', label: 'UniFi console address', kind: 'url', placeholder: 'https://192.168.1.1' },
-          { key: 'protectApiKey', label: 'API key', kind: 'secret' },
-          {
-            key: 'protectVerifyTls',
-            label: 'Verify the console certificate',
-            kind: 'bool',
-            hint: 'Leave off unless your console has a trusted certificate (UniFi consoles normally use a self-signed one).',
-          },
-          {
-            key: 'camerasMode',
-            label: 'Default display on Home',
-            kind: 'select',
-            options: [
-              { value: 'snapshots_live', label: 'Snapshots, live video when tapped' },
-              { value: 'snapshots', label: 'Snapshots only' },
-              { value: 'live', label: 'Live video' },
-              { value: 'off', label: 'Hidden' },
-            ],
-            hint: 'Each person can override this for themselves under Settings → Cameras.',
-          },
-          { key: 'camerasSelected', label: 'Cameras', kind: 'custom' },
-          { key: 'camerasSnapshotSeconds', label: 'Refresh snapshots every (seconds)', kind: 'number' },
-          {
-            key: 'camerasLiveQuality',
-            label: 'Live video quality',
-            kind: 'select',
-            options: [
-              { value: 'medium', label: 'Medium (recommended for tablets)' },
-              { value: 'high', label: 'High' },
-              { value: 'low', label: 'Low' },
-            ],
-          },
-          { key: 'go2rtcUrl', label: 'Live video relay (go2rtc) URL', kind: 'url', placeholder: 'http://go2rtc:1984', hint: 'Leave as http://go2rtc:1984 when using the included docker-compose file.' },
-          { key: 'doorbellPopupEnabled', label: 'Pop up the doorbell camera when it rings', kind: 'bool' },
-          { key: 'doorbellPopupSeconds', label: 'Doorbell pop-up stays open for (seconds)', kind: 'number', show: (v) => !!v.doorbellPopupEnabled },
-        ]}
-        extra={(vals, set) => <CameraPicker vals={vals} set={set} />}
-        test={{
-          label: 'Test connection',
-          run: (vals) =>
-            api<TestResult>('/admin/protect/test', 'POST', {
-              url: String(vals.protectUrl ?? '') || undefined,
-              apiKey: String(vals.protectApiKey ?? '') || undefined,
-              verifyTls: !!vals.protectVerifyTls,
-              go2rtcUrl: String(vals.go2rtcUrl ?? '') || undefined,
-            }),
-        }}
-      />
-
-      <SettingsSection
-        data={d}
-        title="Photos (Home screensaver)"
-        status={
-          d.settings.photosSource?.value && d.settings.photosSource.value !== 'off'
-            ? { ok: true, text: 'On' }
-            : { ok: false, text: 'Off' }
-        }
-        intro={
+      {section === 'security' && (
+        <section className="card">
+          <h2>Security keys</h2>
           <p className="muted small">
-            When someone's been idle on the Home page, FamilyHub fills the screen with a slideshow of these photos. Each person can turn it off or change the wait time
-            under <strong>Settings → Photo slideshow</strong>.
+            The session secret and the key that encrypts saved secrets and Google tokens are generated automatically and stored in <code>{d.dataDir}/secrets.json</code> on the
+            server's data volume. Back that volume up together with the database. If it's lost, you'll need to re-enter the client secrets here and reconnect Google accounts.
           </p>
-        }
-        fields={[
-          {
-            key: 'photosSource',
-            label: 'Photo source',
-            kind: 'select',
-            options: [
-              { value: 'off', label: 'Off' },
-              { value: 'amazon', label: 'Amazon Photos shared links' },
-              { value: 'immich', label: 'Immich' },
-              { value: 'both', label: 'Amazon Photos + Immich' },
-            ],
-          },
-          {
-            key: 'photosAmazonLinks',
-            label: 'Amazon Photos share links',
-            kind: 'textarea',
-            placeholder: 'https://www.amazon.com/photos/shared/…',
-            show: (v) => v.photosSource === 'amazon' || v.photosSource === 'both',
-            hint: (
-              <>
-                One link per line. In Amazon Photos, open an album or group, choose <strong>Share → Copy link</strong>, and allow anyone with the link to view. Amazon has no
-                official API, so this reads the same public page as the link; if Amazon changes it, photos may stop loading until FamilyHub is updated.
-              </>
-            ),
-          },
-          {
-            key: 'immichUrl',
-            label: 'Immich server URL',
-            kind: 'url',
-            placeholder: 'https://photos.example.com',
-            show: (v) => v.photosSource === 'immich' || v.photosSource === 'both',
-          },
-          {
-            key: 'immichApiKey',
-            label: 'Immich API key',
-            kind: 'secret',
-            show: (v) => v.photosSource === 'immich' || v.photosSource === 'both',
-            hint: 'In Immich: Account settings → API keys → New API key. Read access to albums and assets is enough.',
-          },
-          { key: 'immichAlbumIds', label: 'Immich albums', kind: 'custom', show: (v) => v.photosSource === 'immich' || v.photosSource === 'both' },
-          { key: 'photosSlideSeconds', label: 'Seconds per photo', kind: 'number', show: (v) => v.photosSource !== 'off' },
-          { key: 'photosRefreshMinutes', label: 'Check for new photos every (minutes)', kind: 'number', show: (v) => v.photosSource !== 'off' },
-        ]}
-        extra={(vals, set) =>
-          vals.photosSource === 'immich' || vals.photosSource === 'both' ? <ImmichAlbumPicker vals={vals} set={set} /> : null
-        }
-        test={{
-          label: 'Load photos',
-          run: async () => {
-            const r = await api<{ total: number; counts: { amazon: number; immich: number }; errors: string[] }>('/admin/photos/refresh', 'POST');
-            const parts = [r.counts.amazon ? `${r.counts.amazon} from Amazon` : '', r.counts.immich ? `${r.counts.immich} from Immich` : ''].filter(Boolean);
-            if (r.errors.length) return { ok: false, message: `${r.total} photos found. ${r.errors.join(' · ')}` };
-            if (!r.total) return { ok: false, message: 'No photos found. Save your changes first, then check the links or albums.' };
-            return { ok: true, message: `Found ${r.total} photos (${parts.join(', ')}).` };
-          },
-        }}
-        footerNote="Save first, then Load photos to check."
-      />
-
-      <section className="card">
-        <h2>Security keys</h2>
-        <p className="muted small">
-          The session secret and the key that encrypts saved secrets and Google tokens are generated automatically and stored in <code>{d.dataDir}/secrets.json</code> on the
-          server's data volume. Back that volume up together with the database. If it's lost, you'll need to re-enter the client secrets here and reconnect Google accounts.
-        </p>
-      </section>
+        </section>
+      )}
     </>
   );
 }

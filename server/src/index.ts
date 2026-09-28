@@ -19,6 +19,7 @@ import { mealsRouter, recipesRouter } from './routes/meals';
 import { membersRouter } from './routes/members';
 import { photosRouter } from './routes/photos';
 import { weatherRouter } from './routes/weather';
+import { homeRouter } from './routes/home';
 import { camerasRouter, go2rtcRouter } from './routes/cameras';
 import { attachGo2rtcProxy } from './go2rtcProxy';
 import { startEvents } from './protect';
@@ -81,6 +82,7 @@ async function main() {
   app.use('/api/meals', requireAuth, mealsRouter);
   app.use('/api/photos', requireAuth, photosRouter);
   app.use('/api/weather', requireAuth, weatherRouter);
+  app.use('/api/home', requireAuth, homeRouter);
   app.use('/api/cameras', requireAuth, camerasRouter);
   app.use('/go2rtc', requireAuth, go2rtcRouter);
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));

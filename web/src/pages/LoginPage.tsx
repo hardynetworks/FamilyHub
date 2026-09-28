@@ -12,6 +12,7 @@ export function LoginPage({ status }: { status: AuthStatus }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [appName, setAppName] = useState(status.appName);
+  const [familyName, setFamilyName] = useState('');
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
   const setup = status.needsSetup && status.localLogin;
 
@@ -20,7 +21,7 @@ export function LoginPage({ status }: { status: AuthStatus }) {
     setBusy(true);
     setError('');
     try {
-      await api(setup ? '/auth/setup' : '/auth/login', 'POST', setup ? { name, email, password, appName, timezone, appUrl: location.origin } : { email, password });
+      await api(setup ? '/auth/setup' : '/auth/login', 'POST', setup ? { name, email, password, appName, familyName: familyName || undefined, timezone, appUrl: location.origin } : { email, password });
       history.replaceState(null, '', '/');
       await qc.invalidateQueries();
     } catch (err: any) {
@@ -54,9 +55,14 @@ export function LoginPage({ status }: { status: AuthStatus }) {
               </Field>
             )}
             {setup && (
+              <Field label="Family name" hint="Optional, e.g. The Hardy Family. You'll be the head of household.">
+                <input className="input" value={familyName} onChange={(e) => setFamilyName(e.target.value)} />
+              </Field>
+            )}
+            {setup && (
               <div className="grid-2">
                 <Field label="App name">
-                  <input className="input" value={appName} onChange={(e) => setAppName(e.target.value)} placeholder="The Hardy Family" />
+                  <input className="input" value={appName} onChange={(e) => setAppName(e.target.value)} placeholder="FamilyHub" />
                 </Field>
                 <Field label="Time zone">
                   <input className="input" list="tz-list" value={timezone} onChange={(e) => setTimezone(e.target.value)} />

@@ -17,6 +17,7 @@ export interface UserRow {
   color: string;
   avatar: string | null;
   can_login: boolean;
+  member_type: 'adult' | 'child';
   prefs: { slideshowEnabled?: boolean; slideshowIdleMinutes?: number; camerasMode?: string; doorbellPopup?: boolean } | null;
   created_at: Date;
 }
@@ -49,6 +50,7 @@ export function publicUser(u: UserRow) {
     color: u.color,
     avatar: u.avatar,
     canLogin: u.can_login,
+    memberType: u.member_type ?? 'adult',
     hasPassword: !!u.password_hash,
     linkedSso: !!u.oidc_sub,
     prefs: {
@@ -147,6 +149,7 @@ authRouter.get('/status', async (req, res) => {
   const count = await userCount();
   res.json({
     appName: config.appName,
+    familyName: getSetting('familyName'),
     user: req.user ? publicUser(req.user) : null,
     needsSetup: count === 0,
     localLogin: config.localLogin,
@@ -164,6 +167,7 @@ authRouter.post('/setup', async (req, res) => {
       email: z.string().email(),
       password: z.string().min(8).max(200),
       appName: z.string().trim().max(60).optional(),
+      familyName: z.string().trim().max(80).optional(),
       appUrl: z.string().url().max(300).optional(),
       timezone: z.string().max(80).optional(),
     }),
@@ -173,6 +177,7 @@ authRouter.post('/setup', async (req, res) => {
   // First-run wizard also records the basics so nothing needs to be edited in files.
   await saveSettings({
     appName: body.appName && !isLockedByEnv('appName') ? body.appName : undefined,
+    familyName: body.familyName && !isLockedByEnv('familyName') ? body.familyName : undefined,
     appUrl: body.appUrl && !isLockedByEnv('appUrl') && !getSetting('appUrl') ? body.appUrl.replace(/\/+$/, '') : undefined,
     timezone: body.timezone && isValidTimezone(body.timezone) && !isLockedByEnv('timezone') ? body.timezone : undefined,
   });

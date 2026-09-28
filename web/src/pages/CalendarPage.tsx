@@ -1,4 +1,4 @@
-import type { DateSelectArg, EventClickArg, EventDropArg, EventInput, EventSourceFuncArg } from '@fullcalendar/core';
+import type { DayCellContentArg, DayHeaderContentArg, DateSelectArg, EventClickArg, EventDropArg, EventInput, EventSourceFuncArg } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin, { EventResizeDoneArg } from '@fullcalendar/interaction';
 import listPlugin from '@fullcalendar/list';
@@ -8,6 +8,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { EventDraft, EventModal } from '../components/EventModal';
 import { Icon } from '../components/ui';
+import { describeWeather, useWeather } from '../components/Weather';
 import { CalEvent, Member, api, qs } from '../lib/api';
 import { addDaysYmd, ymd } from '../lib/dates';
 import { useMembers, useToast } from '../lib/hooks';
@@ -18,6 +19,26 @@ export function eventColor(e: CalEvent, byId: Map<string, Member>): string {
 
 export function CalendarPage() {
   const { members, byId } = useMembers();
+  const weather = useWeather();
+  const forecast = useMemo(() => {
+    const m = new Map<string, { code: number; max: number; min: number; rain: number | null }>();
+    for (const d of weather.data?.enabled ? weather.data.daily ?? [] : []) m.set(d.date, { code: d.code, max: d.max, min: d.min, rain: d.precipChance });
+    return m;
+  }, [weather.data]);
+
+  const wxChip = (date: Date, compact: boolean) => {
+    const f = forecast.get(ymd(date));
+    if (!f) return null;
+    const d = describeWeather(f.code);
+    const tip = `${d.label} · high ${Math.round(f.max)}° / low ${Math.round(f.min)}°${f.rain !== null && f.rain >= 20 ? ` · ${f.rain}% chance of rain` : ''}`;
+    return (
+      <span className={`fc-wx ${compact ? 'compact' : ''}`} title={tip} aria-label={tip}>
+        <span className="fc-wx-icon">{d.icon}</span>
+        <span className="fc-wx-hi">{Math.round(f.max)}°</span>
+        {!compact && <span className="fc-wx-lo">{Math.round(f.min)}°</span>}
+      </span>
+    );
+  };
   const qc = useQueryClient();
   const toast = useToast();
   const calRef = useRef<FullCalendar>(null);
@@ -186,6 +207,22 @@ export function CalendarPage() {
           selectable
           selectMirror
           dayMaxEvents
+          dayCellContent={(arg: DayCellContentArg) => (
+            <span className="fc-daycell-top">
+              {!arg.isOther && wxChip(arg.date, true)}
+              <span className="fc-daycell-num">{arg.dayNumberText}</span>
+            </span>
+          )}
+          dayHeaderContent={(arg: DayHeaderContentArg) =>
+            arg.view.type === 'dayGridMonth' ? (
+              arg.text
+            ) : (
+              <span className="fc-dayhead">
+                <span>{arg.text}</span>
+                {wxChip(arg.date, false)}
+              </span>
+            )
+          }
           events={fetchEvents}
           select={(a: DateSelectArg) => {
             setDraft({ start: a.start, end: a.end, allDay: a.allDay });

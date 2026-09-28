@@ -24,6 +24,7 @@ membersRouter.post('/', requireAdmin, async (req, res) => {
       color: color.optional(),
       avatar: z.string().max(16).nullish(),
       canLogin: z.boolean().default(true),
+      memberType: z.enum(['adult', 'child']).default('adult'),
     }),
     req.body,
   );
@@ -31,9 +32,9 @@ membersRouter.post('/', requireAdmin, async (req, res) => {
   const hash = b.password ? await bcrypt.hash(b.password, 12) : null;
   try {
     const u = await one<UserRow>(
-      `insert into users (name, email, password_hash, role, color, avatar, can_login)
-       values ($1, $2, $3, $4, $5, $6, $7) returning *`,
-      [b.name, b.email?.toLowerCase() ?? null, hash, b.role, b.color ?? MEMBER_COLORS[(n?.n ?? 0) % MEMBER_COLORS.length], b.avatar ?? null, b.canLogin],
+      `insert into users (name, email, password_hash, role, color, avatar, can_login, member_type)
+       values ($1, $2, $3, $4, $5, $6, $7, $8) returning *`,
+      [b.name, b.email?.toLowerCase() ?? null, hash, b.role, b.color ?? MEMBER_COLORS[(n?.n ?? 0) % MEMBER_COLORS.length], b.avatar ?? null, b.canLogin, b.memberType],
     );
     res.status(201).json(publicUser(u!));
   } catch (e: any) {
@@ -57,6 +58,7 @@ membersRouter.patch('/:id', async (req, res) => {
       avatar: z.string().max(16).nullish(),
       canLogin: z.boolean().optional(),
       unlinkSso: z.boolean().optional(),
+      memberType: z.enum(['adult', 'child']).optional(),
       prefs: z
         .object({
           slideshowEnabled: z.boolean().optional(),
@@ -72,12 +74,12 @@ membersRouter.patch('/:id', async (req, res) => {
   const target = await one<UserRow>('select * from users where id = $1', [req.params.id]);
   if (!target) throw new HttpError(404, 'Member not found');
 
-  if (me.role !== 'admin' && (b.role !== undefined || b.canLogin !== undefined || b.email !== undefined)) {
-    throw new HttpError(403, 'Only admins can change email, role or login access');
+  if (me.role !== 'admin' && (b.role !== undefined || b.canLogin !== undefined || b.email !== undefined || b.memberType !== undefined)) {
+    throw new HttpError(403, 'Only the head of household can change email, role, member type or login access');
   }
-  if (isSelf && (b.role === 'member' || b.canLogin === false)) {
+  if (target.role === 'admin' && (b.role === 'member' || b.canLogin === false)) {
     const admins = await one<{ n: number }>(`select count(*)::int as n from users where role = 'admin' and can_login`);
-    if ((admins?.n ?? 0) <= 1 && target.role === 'admin') throw new HttpError(400, 'You are the last admin');
+    if ((admins?.n ?? 0) <= 1) throw new HttpError(400, 'Every family needs at least one head of household who can sign in');
   }
   let hash: string | undefined;
   if (b.password) {
@@ -98,7 +100,8 @@ membersRouter.patch('/:id', async (req, res) => {
        avatar = case when $8::boolean then $9 else avatar end,
        can_login = coalesce($10, can_login),
        oidc_sub = case when $11::boolean then null else oidc_sub end,
-       prefs = case when $12::jsonb is null then prefs else prefs || $12::jsonb end
+       prefs = case when $12::jsonb is null then prefs else prefs || $12::jsonb end,
+       member_type = coalesce($13, member_type)
      where id = $1 returning *`,
     [
       req.params.id,
@@ -113,6 +116,7 @@ membersRouter.patch('/:id', async (req, res) => {
       b.canLogin ?? null,
       me.role === 'admin' && !!b.unlinkSso,
       b.prefs ? JSON.stringify(b.prefs) : null,
+      b.memberType ?? null,
     ],
   );
   res.json(publicUser(u!));

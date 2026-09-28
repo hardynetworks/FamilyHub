@@ -96,7 +96,7 @@ export function WeatherNow() {
 }
 
 /** Forecast card for the Home grid. */
-export function WeatherCard() {
+export function WeatherCard({ days = 6, fill = false }: { days?: number; fill?: boolean } = {}) {
   const { data, isError } = useWeather();
   if (isError) return null;
   if (!data?.enabled || !data.current) return null;
@@ -104,7 +104,7 @@ export function WeatherCard() {
   const d = describeWeather(c.code, c.isDay);
   const t = today();
   return (
-    <section className="card wx-card">
+    <section className={`card wx-card ${fill ? 'widget-fill' : ''}`}>
       <div className="card-head">
         <h2>Weather</h2>
         <span className="muted small">{data.location}</span>
@@ -122,7 +122,7 @@ export function WeatherCard() {
         </div>
       </div>
       <div className="wx-days">
-        {(data.daily ?? []).slice(0, 6).map((day) => {
+        {(data.daily ?? []).slice(0, days).map((day) => {
           const dd = describeWeather(day.code);
           return (
             <div key={day.date} className="wx-day" title={dd.label}>

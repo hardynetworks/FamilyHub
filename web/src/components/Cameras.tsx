@@ -74,14 +74,14 @@ export function LiveVideo({ cameraId, className }: { cameraId: string; className
 }
 
 /** Home card: camera tiles in the chosen mode. */
-export function CamerasCard() {
+export function CamerasCard({ fill = false }: { fill?: boolean } = {}) {
   const { data } = useCameras();
   const [open, setOpen] = useState<string | null>(null);
   if (!data?.enabled || data.mode === 'off') return null;
   const live = data.mode === 'live' && data.liveAvailable;
   const tapForLive = data.mode === 'snapshots_live' && data.liveAvailable;
   return (
-    <section className="card cam-card">
+    <section className={`card cam-card ${fill ? 'widget-fill' : ''}`}>
       <div className="card-head">
         <h2>
           <Icon name="camera" size={18} /> Cameras
@@ -89,7 +89,7 @@ export function CamerasCard() {
         {tapForLive && <span className="muted small">Tap a camera for live video</span>}
       </div>
       {data.error && <div className="alert">{data.error}</div>}
-      <div className="cam-grid">
+      <div className={`cam-grid ${fill ? 'widget-scroll' : ''}`}>
         {data.cameras.map((c) => (
           <button key={c.id} className="cam-tile" onClick={() => setOpen(c.id)} title={`Open ${c.name}`}>
             {live ? <LiveVideo cameraId={c.id} className="cam-media" /> : <Snapshot cameraId={c.id} seconds={data.snapshotSeconds} className="cam-media" />}

@@ -48,7 +48,7 @@ export async function getWeather(): Promise<WeatherDto> {
     temperature_unit: cfg.units,
     wind_speed_unit: cfg.units === 'fahrenheit' ? 'mph' : 'kmh',
     timezone: 'auto',
-    forecast_days: '6',
+    forecast_days: '14',
   });
   let j: any;
   try {

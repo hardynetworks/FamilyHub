@@ -153,6 +153,13 @@ insert into lists (name, kind, emoji, sort) values ('Groceries', 'shopping', 'ðŸ
     id: '002_user_prefs',
     sql: `alter table users add column prefs jsonb not null default '{}'::jsonb;`,
   },
+  {
+    id: '003_member_type',
+    sql: `
+alter table users add column member_type text not null default 'adult' check (member_type in ('adult','child'));
+update users set member_type = 'child' where not can_login and role = 'member';
+`,
+  },
 ];
 
 export async function migrate(): Promise<void> {

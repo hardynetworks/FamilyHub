@@ -117,6 +117,7 @@ const Patch = z
       .optional(),
     doorbellPopupEnabled: z.boolean().nullable().optional(),
     doorbellPopupSeconds: z.number().int().min(5).max(300).nullable().optional(),
+    familyName: str(80),
   })
   .strict();
 

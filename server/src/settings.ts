@@ -46,6 +46,8 @@ export interface Settings {
   go2rtcUrl: string;
   doorbellPopupEnabled: boolean;
   doorbellPopupSeconds: number;
+  familyName: string;
+  homeDefaultLayout: string;
 }
 export type SettingKey = keyof Settings;
 
@@ -94,6 +96,8 @@ export const DEFS: Record<SettingKey, Def> = {
   go2rtcUrl: { env: 'GO2RTC_URL', def: 'http://go2rtc:1984' },
   doorbellPopupEnabled: { env: 'DOORBELL_POPUP_ENABLED', def: true },
   doorbellPopupSeconds: { env: 'DOORBELL_POPUP_SECONDS', def: 30 },
+  familyName: { env: 'FAMILY_NAME', def: '' },
+  homeDefaultLayout: { env: 'HOME_DEFAULT_LAYOUT', def: '' }, // JSON, managed from the Home editor
 };
 
 export const SETTING_KEYS = Object.keys(DEFS) as SettingKey[];

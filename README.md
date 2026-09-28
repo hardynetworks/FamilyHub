@@ -9,7 +9,7 @@ Sign-in options: **Authentik (OIDC)** and/or local email + password accounts.
 | Area | What you get |
 |---|---|
 | **Home** | Clock and greeting, the week's agenda, today's chores by person, today's meals, shopping list, open to-dos. Refreshes itself every minute, so it works well on a wall tablet. |
-| **Calendar** | Fills the window and resizes with it (agenda view on phones). Month / week / day / agenda views, color-coded by family member, member filters, drag-to-move/resize, repeating events (daily, weekly, every 2 weeks, monthly, yearly, with an optional end date). |
+| **Calendar** | Fills the window and resizes with it (agenda view on phones). Shows the daily weather forecast on each day. Month / week / day / agenda views, color-coded by family member, member filters, drag-to-move/resize, repeating events (daily, weekly, every 2 weeks, monthly, yearly, with an optional end date). |
 | **Google sync** | Each person connects their own Google account(s) and picks which calendars to sync and who each calendar belongs to. Google events show up in FamilyHub. Events created or edited in FamilyHub on a Google calendar are written to Google right away. Changes made in Google are pulled in every 5 minutes (configurable) or when you click **Sync now**. |
 | **Lists** | Multiple shopping and to-do lists. Paste several lines to add many items at once. Items can have an assignee and a due date. You can hide or clear completed items. |
 | **Chores** | Daily, specific-weekday, or one-time chores, assigned to a person or to "anyone". Tap to complete. Points feed a weekly leaderboard. |
@@ -87,6 +87,30 @@ Account matching on SSO login works in this order: an existing link, then a fami
 - **Who an event is for.** The "Who's it for?" members are stored on the Google event as a private extended property, so they survive round trips.
 - **Read-only calendars.** Calendars shared with you as read-only (holidays, school calendars, etc.) can be synced and viewed but not edited.
 - **Token storage.** OAuth tokens and client secrets are encrypted at rest (AES-256-GCM) with the auto-generated key in `/data/secrets.json`.
+
+## Customizing the Home page
+
+Tap **Customize** (bottom-right of Home) to edit the page in place:
+
+- **Move widgets** by dragging the ⠿ handle; this works with touch too.
+- **Resize** by dragging the corner, or with the −/+ buttons. The page uses a 12-column grid on wide screens, 6 columns on tablets, and a single column on phones.
+- **Add or remove widgets:** greeting & clock, big clock, weather, cameras, coming up, today's chores, today's meals, shopping list (more than one allowed), to-dos, and family notes.
+- **Widget options (⚙):** for example how many days of events to show, which shopping list to show, or the text and colour of a note.
+- **Look & feel:** accent colour (applies to the whole app), light/dark/automatic, text size (great for a wall tablet), background and spacing.
+
+Each person's Home page is their own. A head of household can press **Save for family** to make a layout the default for everyone who hasn't customized theirs, and anyone can **Reset** back to the family layout.
+
+## Family & roles
+
+**Settings → Family members** is where the head of household manages the family:
+
+- Set the family name.
+- Add adults and children, and edit anyone's name, colour, avatar and login.
+- **Head of household:** manages the family and all app settings. There can be more than one, and FamilyHub always keeps at least one.
+- **Adult:** full use of calendar, lists, chores and meals.
+- **Child:** appears on the calendar and chore charts, and doesn't need a login.
+
+Settings are organised into tabs grouped by **You**, **Family**, **Connections** and **App settings** (heads of household only).
 
 ## Cameras (UniFi Protect)
 

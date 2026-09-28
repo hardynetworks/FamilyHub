@@ -6,17 +6,91 @@ import { Avatar, COLOR_CHOICES, EMOJI_CHOICES, Field, Icon, Modal } from '../com
 import { GoogleStatus, Member, api } from '../lib/api';
 import { useAction, useAuthStatus, useMe, useMembers, useToast } from '../lib/hooks';
 
+type TabId =
+  | 'profile'
+  | 'display'
+  | 'family'
+  | 'google'
+  | 'app-general'
+  | 'app-signin'
+  | 'app-google'
+  | 'app-weather'
+  | 'app-photos'
+  | 'app-cameras'
+  | 'app-security';
+
+interface TabDef {
+  id: TabId;
+  label: string;
+  icon: string;
+  adminOnly?: boolean;
+}
+
+const GROUPS: { title: string; adminOnly?: boolean; tabs: TabDef[] }[] = [
+  {
+    title: 'You',
+    tabs: [
+      { id: 'profile', label: 'Profile', icon: 'home' },
+      { id: 'display', label: 'Screen & alerts', icon: 'image' },
+    ],
+  },
+  {
+    title: 'Family',
+    tabs: [{ id: 'family', label: 'Family members', icon: 'star' }],
+  },
+  {
+    title: 'Connections',
+    tabs: [{ id: 'google', label: 'Google Calendar', icon: 'google' }],
+  },
+  {
+    title: 'App settings',
+    adminOnly: true,
+    tabs: [
+      { id: 'app-general', label: 'General', icon: 'settings' },
+      { id: 'app-signin', label: 'Sign-in', icon: 'logout' },
+      { id: 'app-google', label: 'Google API', icon: 'google' },
+      { id: 'app-weather', label: 'Weather', icon: 'sun' },
+      { id: 'app-photos', label: 'Photos', icon: 'image' },
+      { id: 'app-cameras', label: 'Cameras', icon: 'camera' },
+      { id: 'app-security', label: 'Security', icon: 'lock' },
+    ],
+  },
+];
+
+// Old links (e.g. /settings#google from the Google sign-in redirect, #app-settings) still land somewhere sensible.
+const ALIASES: Record<string, TabId> = { 'app-settings': 'app-general' };
+
+function tabFromHash(isAdmin: boolean): TabId {
+  const h = location.hash.replace('#', '');
+  const id = (ALIASES[h] ?? h) as TabId;
+  const all = GROUPS.filter((g) => isAdmin || !g.adminOnly).flatMap((g) => g.tabs);
+  return all.some((t) => t.id === id) ? id : 'profile';
+}
+
 export function SettingsPage({ onLogout }: { onLogout: () => void }) {
   const me = useMe();
   const status = useAuthStatus().data!;
   const toast = useToast();
+  const isAdmin = me.role === 'admin';
+  const [tab, setTab] = useState<TabId>(() => tabFromHash(isAdmin));
 
   useEffect(() => {
     const p = new URLSearchParams(location.search);
     if (p.get('google') === 'connected') toast('Google account connected', 'success');
     if (p.get('googleError')) toast(`Google connection failed: ${p.get('googleError')}`, 'error');
     if (p.toString()) history.replaceState(null, '', '/settings' + location.hash);
-  }, [toast]);
+    const onHash = () => setTab(tabFromHash(isAdmin));
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, [toast, isAdmin]);
+
+  const go = (id: TabId) => {
+    setTab(id);
+    history.replaceState(null, '', `/settings#${id}`);
+    window.scrollTo({ top: 0 });
+  };
+  const groups = GROUPS.filter((g) => isAdmin || !g.adminOnly);
+  const current = groups.flatMap((g) => g.tabs).find((t) => t.id === tab);
 
   return (
     <div className="page page-settings">
@@ -26,19 +100,59 @@ export function SettingsPage({ onLogout }: { onLogout: () => void }) {
           <Icon name="logout" size={16} /> Sign out
         </button>
       </header>
-      <ProfileCard />
-      <SlideshowPrefsCard />
-      <CameraPrefsCard />
-      <FamilyCard />
-      <GoogleCard />
-      {me.role === 'admin' && <AppSettings />}
-      <section className="card">
-        <h2>About</h2>
-        <p className="muted small">
-          {status.appName} · time zone {status.timezone} · signed in as {me.email ?? me.name}
-          {me.linkedSso ? ' (SSO)' : ''}
-        </p>
-      </section>
+      <div className="settings-layout">
+        <nav className="settings-nav" aria-label="Settings sections">
+          {groups.map((g) => (
+            <div key={g.title} className="settings-group">
+              <div className="settings-group-title">
+                {g.title}
+                {g.adminOnly && <span className="tag">Head of household</span>}
+              </div>
+              {g.tabs.map((t) => (
+                <button key={t.id} className={`settings-tab ${tab === t.id ? 'active' : ''}`} onClick={() => go(t.id)} aria-current={tab === t.id ? 'page' : undefined}>
+                  <Icon name={t.icon} size={18} /> <span>{t.label}</span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
+        <div className="settings-content">
+          <h2 className="settings-content-title">{current?.label}</h2>
+          {tab === 'profile' && (
+            <>
+              <ProfileCard />
+              <section className="card">
+                <h2>About</h2>
+                <p className="muted small">
+                  {status.appName} · time zone {status.timezone} · signed in as {me.email ?? me.name}
+                  {me.linkedSso ? ' (SSO)' : ''}
+                </p>
+              </section>
+            </>
+          )}
+          {tab === 'display' && (
+            <>
+              <section className="card">
+                <h2>Home page</h2>
+                <p className="muted small">
+                  To rearrange your Home page, change its colours or text size, open <strong>Home</strong> and tap <strong>Customize</strong>.
+                </p>
+              </section>
+              <SlideshowPrefsCard />
+              <CameraPrefsCard />
+            </>
+          )}
+          {tab === 'family' && <FamilyManager />}
+          {tab === 'google' && <GoogleCard />}
+          {tab === 'app-general' && <AppSettings section="general" />}
+          {tab === 'app-signin' && <AppSettings section="signin" />}
+          {tab === 'app-google' && <AppSettings section="google" />}
+          {tab === 'app-weather' && <AppSettings section="weather" />}
+          {tab === 'app-photos' && <AppSettings section="photos" />}
+          {tab === 'app-cameras' && <AppSettings section="cameras" />}
+          {tab === 'app-security' && <AppSettings section="security" />}
+        </div>
+      </div>
     </div>
   );
 }
@@ -57,7 +171,7 @@ function ProfileCard() {
         <Avatar member={me} size={48} />
         <div>
           <div className="strong">{me.name}</div>
-          <div className="muted small">{me.email}{me.role === 'admin' ? ' · Admin' : ''}</div>
+          <div className="muted small">{me.email}{me.role === 'admin' ? ' · Head of household' : ''}</div>
         </div>
       </div>
       {edit && <MemberModal member={me} self onClose={() => { setEdit(false); qc.invalidateQueries({ queryKey: ['auth'] }); }} />}
@@ -165,46 +279,140 @@ function CameraPrefsCard() {
   );
 }
 
-function FamilyCard() {
+function roleLabel(m: Member) {
+  if (m.role === 'admin') return 'Head of household';
+  return m.memberType === 'child' ? 'Child' : 'Adult';
+}
+
+function loginLabel(m: Member) {
+  if (!m.canLogin) return 'No login';
+  if (m.linkedSso) return 'Signs in with SSO';
+  if (m.hasPassword) return 'Signs in with password';
+  return 'Hasn\u2019t signed in yet';
+}
+
+/** The family: head of household adds, edits and removes everyone, including kids without logins. */
+function FamilyManager() {
   const me = useMe();
   const { members } = useMembers();
-  const [editing, setEditing] = useState<Member | 'new' | null>(null);
-  const isAdmin = me.role === 'admin';
+  const status = useAuthStatus().data!;
+  const qc = useQueryClient();
+  const toast = useToast();
+  const isHead = me.role === 'admin';
+  const [editing, setEditing] = useState<Member | { new: 'adult' | 'child' } | null>(null);
+  const [familyName, setFamilyName] = useState(status.familyName ?? '');
+
+  const saveFamilyName = async () => {
+    if ((status.familyName ?? '') === familyName.trim()) return;
+    try {
+      await api('/admin/settings', 'PUT', { familyName: familyName.trim() });
+      await qc.invalidateQueries({ queryKey: ['auth'] });
+      toast('Family name saved', 'success');
+    } catch (e: any) {
+      toast(e.message, 'error');
+    }
+  };
+
+  const groups: { title: string; list: Member[] }[] = [
+    { title: 'Heads of household', list: members.filter((m) => m.role === 'admin') },
+    { title: 'Adults', list: members.filter((m) => m.role !== 'admin' && m.memberType !== 'child') },
+    { title: 'Children', list: members.filter((m) => m.role !== 'admin' && m.memberType === 'child') },
+  ];
+
   return (
-    <section className="card">
-      <div className="card-head">
-        <h2>Family members</h2>
-        {isAdmin && (
-          <button className="btn btn-sm" onClick={() => setEditing('new')}>
-            <Icon name="plus" size={16} /> Add member
-          </button>
-        )}
-      </div>
-      <p className="muted small">
-        Add everyone in the household, including kids who don't need their own login, so you can assign events and chores. People who sign in with
-        SSO are matched to a member by email.
-      </p>
-      <ul className="member-list">
-        {members.map((m) => (
-          <li key={m.id}>
-            <button className="manage-row" onClick={() => isAdmin && setEditing(m)} disabled={!isAdmin}>
-              <Avatar member={m} size={36} />
-              <span className="grow">
-                <div>{m.name} {m.id === me.id && <span className="muted small">(you)</span>}</div>
-                <div className="muted small">
-                  {[m.email, m.role === 'admin' ? 'Admin' : null, !m.canLogin ? 'No login' : m.linkedSso ? 'SSO' : m.hasPassword ? 'Password' : 'Not signed in yet'].filter(Boolean).join(' · ')}
-                </div>
-              </span>
+    <>
+      <section className="card family-hero">
+        <div className="family-hero-row">
+          <div className="family-avatars">
+            {members.slice(0, 8).map((m) => (
+              <Avatar key={m.id} member={m} size={44} />
+            ))}
+          </div>
+          <div className="grow">
+            {isHead ? (
+              <Field label="Family name">
+                <input
+                  className="input"
+                  value={familyName}
+                  placeholder="e.g. The Hardy Family"
+                  onChange={(e) => setFamilyName(e.target.value)}
+                  onBlur={saveFamilyName}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+                />
+              </Field>
+            ) : (
+              <div className="family-name">{status.familyName || 'Our family'}</div>
+            )}
+            <div className="muted small">
+              {members.length} member{members.length === 1 ? '' : 's'} · {members.filter((m) => m.memberType === 'child' && m.role !== 'admin').length} children
+            </div>
+          </div>
+        </div>
+        {isHead && (
+          <div className="family-actions">
+            <button className="btn btn-primary" onClick={() => setEditing({ new: 'adult' })}>
+              <Icon name="plus" size={16} /> Add an adult
             </button>
-          </li>
+            <button className="btn" onClick={() => setEditing({ new: 'child' })}>
+              <Icon name="plus" size={16} /> Add a child
+            </button>
+          </div>
+        )}
+        {!isHead && <p className="muted small">Only a head of household can add or change family members.</p>}
+      </section>
+
+      {groups
+        .filter((g) => g.list.length)
+        .map((g) => (
+          <section key={g.title} className="card">
+            <h2>{g.title}</h2>
+            <div className="member-grid">
+              {g.list.map((m) => (
+                <button key={m.id} className="member-card" onClick={() => (isHead || m.id === me.id) && setEditing(m)} disabled={!isHead && m.id !== me.id}>
+                  <Avatar member={m} size={52} />
+                  <div className="member-card-name">
+                    {m.name} {m.id === me.id && <span className="muted small">(you)</span>}
+                  </div>
+                  <div className="member-card-role" style={{ color: m.color }}>
+                    {roleLabel(m)}
+                  </div>
+                  <div className="muted small">{loginLabel(m)}</div>
+                  {m.email && <div className="muted small member-card-email">{m.email}</div>}
+                </button>
+              ))}
+            </div>
+          </section>
         ))}
-      </ul>
-      {editing && <MemberModal member={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}
-    </section>
+
+      <section className="card">
+        <h2>How roles work</h2>
+        <ul className="muted small roles-help">
+          <li>
+            <strong>Head of household</strong>: manages the family, app settings and connections. You can have more than one.
+          </li>
+          <li>
+            <strong>Adult</strong>: full use of calendar, lists, chores and meals, and can change their own profile.
+          </li>
+          <li>
+            <strong>Child</strong>: shown on the calendar and chore charts. Can have a login, but doesn't need one.
+          </li>
+          <li>People who sign in with SSO (Authentik) are matched to a family member by email.</li>
+        </ul>
+      </section>
+
+      {editing && (
+        <MemberModal
+          member={'new' in editing ? null : editing}
+          newType={'new' in editing ? editing.new : undefined}
+          self={!('new' in editing) && editing.id === me.id}
+          onClose={() => setEditing(null)}
+        />
+      )}
+    </>
   );
 }
 
-function MemberModal({ member, self, onClose }: { member: Member | null; self?: boolean; onClose: () => void }) {
+function MemberModal({ member, self, newType, onClose }: { member: Member | null; self?: boolean; newType?: 'adult' | 'child'; onClose: () => void }) {
   const me = useMe();
   const status = useAuthStatus().data!;
   const isAdmin = me.role === 'admin';
@@ -213,14 +421,15 @@ function MemberModal({ member, self, onClose }: { member: Member | null; self?: 
   const [role, setRole] = useState(member?.role ?? 'member');
   const [color, setColor] = useState(member?.color ?? COLOR_CHOICES[0]);
   const [avatar, setAvatar] = useState(member?.avatar ?? '');
-  const [canLogin, setCanLogin] = useState(member?.canLogin ?? true);
+  const [memberType, setMemberType] = useState<'adult' | 'child'>(member?.memberType ?? newType ?? 'adult');
+  const [canLogin, setCanLogin] = useState(member?.canLogin ?? newType !== 'child');
   const [password, setPassword] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const inv = [['members'], ['auth']];
 
   const body = () => {
     const b: Record<string, unknown> = { name, color, avatar: avatar || null };
-    if (isAdmin) Object.assign(b, { email: email || null, role, canLogin });
+    if (isAdmin) Object.assign(b, { email: email || null, role, canLogin, memberType: role === 'admin' ? 'adult' : memberType });
     if (password) b.password = password;
     if (password && self && member?.hasPassword && !isAdmin) b.currentPassword = currentPassword;
     return b;
@@ -231,7 +440,7 @@ function MemberModal({ member, self, onClose }: { member: Member | null; self?: 
 
   return (
     <Modal
-      title={member ? (self ? 'My profile' : `Edit ${member.name}`) : 'Add family member'}
+      title={member ? (self ? 'My profile' : `Edit ${member.name}`) : memberType === 'child' ? 'Add a child' : 'Add an adult'}
       onClose={onClose}
       footer={
         <>
@@ -270,20 +479,27 @@ function MemberModal({ member, self, onClose }: { member: Member | null; self?: 
         </Field>
         {isAdmin && (
           <>
-            <div className="grid-2">
-              <Field label="Email" hint="Used for password login and to match SSO accounts.">
+            <Field label="Role in the family">
+              <div className="seg">
+                <button type="button" className={role !== 'admin' && memberType === 'adult' ? 'on' : ''} onClick={() => (setRole('member'), setMemberType('adult'))}>
+                  Adult
+                </button>
+                <button type="button" className={role !== 'admin' && memberType === 'child' ? 'on' : ''} onClick={() => (setRole('member'), setMemberType('child'))}>
+                  Child
+                </button>
+                <button type="button" className={role === 'admin' ? 'on' : ''} onClick={() => setRole('admin')}>
+                  Head of household
+                </button>
+              </div>
+            </Field>
+            <label className="toggle">
+              <input type="checkbox" checked={canLogin} onChange={(e) => setCanLogin(e.target.checked)} /> Can sign in to FamilyHub
+            </label>
+            {canLogin && (
+              <Field label="Email" hint="Used to sign in with a password, and to match their Authentik account.">
                 <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
               </Field>
-              <Field label="Role">
-                <select className="input" value={role} onChange={(e) => setRole(e.target.value as Member['role'])}>
-                  <option value="member">Member</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </Field>
-            </div>
-            <label className="toggle">
-              <input type="checkbox" checked={canLogin} onChange={(e) => setCanLogin(e.target.checked)} /> Can sign in
-            </label>
+            )}
           </>
         )}
         {status.localLogin && canLogin && (
@@ -339,7 +555,7 @@ function GoogleCard() {
           Google sync isn't set up yet.{' '}
           {me.role === 'admin' ? (
             <>
-              Add your Google OAuth client under <a href="#app-settings">App settings → Google Calendar</a> below.
+              Add your Google OAuth client under <a href="#app-google">App settings → Google API</a>.
             </>
           ) : (
             'Ask a family admin to add the Google OAuth client in Settings.'
