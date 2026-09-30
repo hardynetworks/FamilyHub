@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Avatar, Empty, Field, Icon, Modal } from '../components/ui';
-import { Chore, Member, api, qs } from '../lib/api';
-import { WEEKDAYS, addDaysYmd, fmtDayLong, parseYmd, relativeDayLabel, startOfWeek, today, ymd } from '../lib/dates';
-import { useAction, useMembers } from '../lib/hooks';
+import { Chore, ChoreApproval, Member, api, qs } from '../lib/api';
+import { WEEKDAYS, addDaysYmd, fmtDayLong, fmtTime, parseYmd, relativeDayLabel, startOfWeek, today, ymd } from '../lib/dates';
+import { useAction, useAuthStatus, useMe, useMembers } from '../lib/hooks';
 
 export function ChoresPage() {
   const { members, byId } = useMembers();
@@ -39,6 +39,7 @@ export function ChoresPage() {
         </button>
       </header>
       <p className="muted">{fmtDayLong(date)}</p>
+      <ApprovalsCard />
 
       <div className="chores-layout">
         <div className="chore-columns">
@@ -60,11 +61,20 @@ export function ChoresPage() {
                 </div>
                 <div className="progress"><div style={{ width: `${(doneCount / g.items.length) * 100}%`, background: g.member?.color }} /></div>
                 {g.items.map((c) => (
-                  <button key={c.id} className={`chore-tile ${c.done ? 'is-done' : ''}`} onClick={() => toggle.mutate(c)}>
+                  <button
+                    key={c.id}
+                    className={`chore-tile ${c.status === 'approved' ? 'is-done' : ''} ${c.status === 'pending' ? 'is-pending' : ''}`}
+                    onClick={() => toggle.mutate(c)}
+                    title={c.status === 'pending' ? 'Waiting for a parent to approve. Tap to undo.' : undefined}
+                  >
                     <span className="chore-emoji">{c.emoji || '✔️'}</span>
-                    <span className="chore-title">{c.title}</span>
+                    <span className="chore-title">
+                      {c.title}
+                      {c.status === 'pending' && <span className="chore-state">⏳ Waiting for OK</span>}
+                      {c.status === 'rejected' && <span className="chore-state is-back">↩️ Sent back, try again</span>}
+                    </span>
                     <span className="pts">+{c.points}</span>
-                    <span className="chore-check">{c.done && <Icon name="check" size={16} />}</span>
+                    <span className="chore-check">{c.status === 'approved' ? <Icon name="check" size={16} /> : c.status === 'pending' ? '⏳' : null}</span>
                   </button>
                 ))}
               </section>
@@ -226,5 +236,53 @@ function ChoreForm({ chore, onClose }: { chore: Chore | null; onClose: () => voi
         </label>
       </div>
     </Modal>
+  );
+}
+
+/** Chores the kids marked done that are waiting for a parent. Parents can approve here; kids see what's waiting. */
+function ApprovalsCard() {
+  const me = useMe();
+  const status = useAuthStatus().data;
+  const { byId } = useMembers();
+  const canReview = me.role === 'admin' && !status?.device;
+  const list = useQuery({ queryKey: ['chores', 'approvals'], queryFn: () => api<ChoreApproval[]>('/chores/approvals'), refetchInterval: 30_000 });
+  const review = useAction((v: { id: string; approve: boolean }) => api(`/chores/approvals/${v.id}`, 'POST', { approve: v.approve }), [['chores']]);
+  const items = list.data ?? [];
+  if (!items.length) return null;
+  return (
+    <section className="card approvals">
+      <div className="card-head">
+        <h2>⏳ Waiting for approval <span className="badge">{items.length}</span></h2>
+        {!canReview && <span className="muted small">A parent needs to OK these</span>}
+      </div>
+      <div className="approvals-list">
+        {items.map((a) => {
+          const who = a.completedBy ? byId.get(a.completedBy) : null;
+          return (
+            <div key={a.id} className="approval-row">
+              <Avatar member={who} size={32} />
+              <div className="grow">
+                <div className="strong">
+                  {a.emoji} {a.title} <span className="pts">+{a.points}</span>
+                </div>
+                <div className="muted small">
+                  {who?.name ?? 'Someone'} · {relativeDayLabel(a.date)} · {fmtTime(a.completedAt)}
+                </div>
+              </div>
+              {canReview && (
+                <div className="approval-actions">
+                  <button className="btn btn-sm" onClick={() => review.mutate({ id: a.id, approve: false })} title="Send it back to do again">
+                    Not yet
+                  </button>
+                  <button className="btn btn-sm btn-primary" onClick={() => review.mutate({ id: a.id, approve: true })}>
+                    <Icon name="check" size={14} /> Approve
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }

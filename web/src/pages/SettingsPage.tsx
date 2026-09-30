@@ -19,6 +19,7 @@ type TabId =
   | 'app-photos'
   | 'app-cameras'
   | 'app-kiosk'
+  | 'app-notifications'
   | 'app-security';
 
 interface TabDef {
@@ -55,6 +56,7 @@ const GROUPS: { title: string; adminOnly?: boolean; tabs: TabDef[] }[] = [
       { id: 'app-photos', label: 'Photos', icon: 'image' },
       { id: 'app-cameras', label: 'Cameras', icon: 'camera' },
       { id: 'app-kiosk', label: 'Kiosk screens', icon: 'lock' },
+      { id: 'app-notifications', label: 'Notifications', icon: 'star' },
       { id: 'app-security', label: 'Security', icon: 'lock' },
     ],
   },
@@ -143,6 +145,7 @@ export function SettingsPage({ onLogout }: { onLogout: () => void }) {
               </section>
               <SlideshowPrefsCard />
               <CameraPrefsCard />
+              {isAdmin && <AlertPrefsCard />}
             </>
           )}
           {tab === 'family' && <FamilyManager />}
@@ -154,6 +157,7 @@ export function SettingsPage({ onLogout }: { onLogout: () => void }) {
           {tab === 'app-photos' && <AppSettings section="photos" />}
           {tab === 'app-cameras' && <AppSettings section="cameras" />}
           {tab === 'app-kiosk' && <KioskAdmin />}
+          {tab === 'app-notifications' && <AppSettings section="notifications" />}
           {tab === 'app-security' && <AppSettings section="security" />}
         </div>
       </div>
@@ -629,6 +633,52 @@ function GoogleCard() {
           </div>
         );
       })}
+    </section>
+  );
+}
+
+/** Where a head of household gets chore-approval requests: email and/or a text (email-to-text address). */
+function AlertPrefsCard() {
+  const me = useMe();
+  const qc = useQueryClient();
+  const toast = useToast();
+  const [text, setText] = useState(me.prefs.notifyText ?? '');
+  const save = async (prefs: Partial<Member['prefs']>) => {
+    try {
+      await api(`/members/${me.id}`, 'PATCH', { prefs });
+      await qc.invalidateQueries({ queryKey: ['auth'] });
+      qc.invalidateQueries({ queryKey: ['members'] });
+      toast('Saved', 'success');
+    } catch (e: any) {
+      toast(e.message, 'error');
+    }
+  };
+  return (
+    <section className="card">
+      <h2>Chore approval alerts</h2>
+      <p className="muted small">When a child marks a chore done, you'll get a message with Approve / Not yet buttons. Push notifications (ntfy, Pushover) are set up under App settings → Notifications.</p>
+      <div className="form">
+        <label className="toggle">
+          <input type="checkbox" checked={me.prefs.notifyEmail !== false} disabled={!me.email} onChange={(e) => save({ notifyEmail: e.target.checked })} /> Email me
+          {me.email ? ` at ${me.email}` : ' (add an email address to your profile first)'}
+        </label>
+        <Field
+          label="Text me (email-to-text address)"
+          hint={
+            <>
+              Your number at your carrier's gateway, e.g. <code>5551234567@vtext.com</code> (Verizon), <code>@tmomail.net</code> (T-Mobile), <code>@txt.att.net</code> (AT&amp;T). Some
+              carriers are phasing this out; push notifications are more reliable. Leave empty for no texts.
+            </>
+          }
+        >
+          <div className="row">
+            <input className="input" value={text} onChange={(e) => setText(e.target.value.trim())} placeholder="5551234567@vtext.com" inputMode="email" />
+            <button className="btn" onClick={() => save({ notifyText: text })} disabled={text === (me.prefs.notifyText ?? '')}>
+              Save
+            </button>
+          </div>
+        </Field>
+      </div>
     </section>
   );
 }

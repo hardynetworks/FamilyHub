@@ -19,7 +19,7 @@ export interface UserRow {
   avatar: string | null;
   can_login: boolean;
   member_type: 'adult' | 'child';
-  prefs: { slideshowEnabled?: boolean; slideshowIdleMinutes?: number; camerasMode?: string; doorbellPopup?: boolean } | null;
+  prefs: { slideshowEnabled?: boolean; slideshowIdleMinutes?: number; camerasMode?: string; doorbellPopup?: boolean; notifyEmail?: boolean; notifyText?: string } | null;
   created_at: Date;
 }
 
@@ -63,6 +63,8 @@ export function publicUser(u: UserRow) {
       slideshowIdleMinutes: u.prefs?.slideshowIdleMinutes ?? 1,
       camerasMode: u.prefs?.camerasMode ?? 'default',
       doorbellPopup: u.prefs?.doorbellPopup ?? true,
+      notifyEmail: u.prefs?.notifyEmail ?? true,
+      notifyText: u.prefs?.notifyText ?? '',
     },
   };
 }

@@ -33,7 +33,7 @@ export interface Member {
   memberType: 'adult' | 'child';
   hasPassword: boolean;
   linkedSso: boolean;
-  prefs: { slideshowEnabled: boolean; slideshowIdleMinutes: number; camerasMode: CamerasMode | 'default'; doorbellPopup: boolean };
+  prefs: { slideshowEnabled: boolean; slideshowIdleMinutes: number; camerasMode: CamerasMode | 'default'; doorbellPopup: boolean; notifyEmail: boolean; notifyText: string };
 }
 
 export type CamerasMode = 'off' | 'snapshots' | 'live' | 'snapshots_live';
@@ -178,7 +178,19 @@ export interface Chore {
   dueDate: string | null;
   active: boolean;
   done?: boolean;
+  /** approved | pending (waiting for a parent) | rejected (sent back) | null (not done) */
+  status?: 'approved' | 'pending' | 'rejected' | null;
   completedBy?: string | null;
+}
+
+export interface ChoreApproval {
+  id: string;
+  date: string;
+  completedBy: string | null;
+  completedAt: string;
+  points: number;
+  title: string;
+  emoji: string | null;
 }
 
 export interface Recipe {

@@ -54,6 +54,7 @@ These use a demo install filled with a made-up family (the "Parkers"), not real 
 - [Google Calendar setup (two-way sync)](#google-calendar-setup-two-way-sync)
 - [Customizing the Home page](#customizing-the-home-page)
 - [Family and roles](#family-and-roles)
+- [Chore approval and parent notifications](#chore-approval-and-parent-notifications)
 - [Cameras (UniFi Protect)](#cameras-unifi-protect)
 - [Kiosk screens (wall tablets, Raspberry Pi)](#kiosk-screens-wall-tablets-raspberry-pi)
 - [Weather](#weather)
@@ -305,6 +306,25 @@ The roles are:
 
 Settings are grouped into tabs: **You** (profile, screen & alerts), **Family**, **Connections** (your Google accounts) and **App settings** (heads of household only).
 
+## Chore approval and parent notifications
+
+When a child marks a chore done, it shows **⏳ Waiting for OK**, and every head of household is notified. Points only count once a parent approves. **Not yet** sends the chore back to the child's list.
+
+**Ways to approve:**
+- **In the app:** a **Waiting for approval** card at the top of the Chores page. Parents ticking chores on their own device approve them straight away.
+- **Email:** the email has **Approve** and **Deny** buttons, which open a one-tap confirmation page. No sign-in is needed, and each link works once, for 14 days.
+- **Text message:** sent through your carrier's email-to-text address.
+- **Phone push:** [ntfy](https://ntfy.sh) shows **Approve / Deny** buttons right in the notification. [Pushover](https://pushover.net) opens the approval page.
+
+**Set up (head of household):**
+1. **Settings → App settings → Notifications:**
+   - Choose who needs approval: children (the default), everyone, or nobody.
+   - Enter your email (SMTP) server details, and/or an ntfy topic or Pushover keys.
+   - Use **Send a test** to check it works.
+2. **Settings → Screen & alerts → Chore approval alerts:** each parent chooses whether to get emails, and can add an email-to-text address for texts (e.g. `5551234567@vtext.com`).
+
+> The links in notifications use your **Public address** (Settings → App settings → General). The phone or computer you approve from must be able to reach it, for example over your VPN.
+
 ## Cameras (UniFi Protect)
 
 FamilyHub can show your UniFi Protect cameras on Home and pop up the doorbell camera when someone rings. It uses the official **Protect Integration API**, which needs Protect 5.3 or newer.
@@ -517,10 +537,7 @@ web/src
 
 Planned next, in this order:
 
-1. **Chore rewards with parent approval.**
-   - Kids tap "done", and a parent gets an email and/or a phone push notification with Approve / Deny buttons. The push goes through a self-hosted [ntfy](https://ntfy.sh) server or [Pushover](https://pushover.net).
-   - Approved chores add points or money to the child's reward balance, and kids can redeem rewards the parents set up.
-   - Texts will use email-to-text through your own email (SMTP) server.
+1. **Reward balances:** approved chores add money as well as points to each child's balance, and kids can redeem rewards the parents set up. (Parent approval with email, text and push notifications is done; see above.)
 2. **More calendars.**
    - **Apple iCloud Calendar**, two-way, using an app-specific password.
    - **Subscribing to any .ics link** (school, sports, holidays), read-only.

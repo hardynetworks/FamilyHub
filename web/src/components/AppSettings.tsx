@@ -18,7 +18,7 @@ interface FieldSpec {
 
 type Values = Record<string, string | number | boolean>;
 
-export type AppSection = 'general' | 'signin' | 'google' | 'weather' | 'photos' | 'cameras' | 'security';
+export type AppSection = 'general' | 'signin' | 'google' | 'weather' | 'photos' | 'cameras' | 'notifications' | 'security';
 
 /** Admin-only app configuration, one section per Settings tab. */
 export function AppSettings({ section }: { section: AppSection }) {
@@ -318,6 +318,79 @@ export function AppSettings({ section }: { section: AppSection }) {
           }}
           footerNote="Save first, then Load photos to check."
         />
+      )}
+
+      {section === 'notifications' && (
+        <>
+          <SettingsSection
+            data={d}
+            title="Chore approval"
+            fields={[
+              {
+                key: 'choreApproval',
+                label: 'When a chore is marked done',
+                kind: 'select',
+                options: [
+                  { value: 'kids', label: "Children's chores need a parent's OK (recommended)" },
+                  { value: 'all', label: "Everyone's chores need a parent's OK" },
+                  { value: 'off', label: 'No approval: points count straight away' },
+                ],
+                hint: 'Points only count once a head of household approves. Parents ticking a chore on their own phone or computer approve it straight away.',
+              },
+            ]}
+          />
+          <SettingsSection
+            data={d}
+            title="Email and text messages"
+            status={d.settings.smtpHost?.value ? { ok: true, text: 'Set up' } : { ok: false, text: 'Not set up' }}
+            intro={
+              <p className="muted small">
+                Approval requests are emailed to each head of household (they can turn this off, or add a phone number for texts, under{' '}
+                <strong>Settings → Screen &amp; alerts</strong>). Use your own mail server, or a service like Gmail (with an app password), Fastmail or SMTP2GO.
+              </p>
+            }
+            fields={[
+              { key: 'smtpHost', label: 'Mail server (SMTP)', kind: 'text', placeholder: 'smtp.gmail.com' },
+              { key: 'smtpPort', label: 'Port', kind: 'number', placeholder: '587' },
+              {
+                key: 'smtpSecurity',
+                label: 'Security',
+                kind: 'select',
+                options: [
+                  { value: 'starttls', label: 'STARTTLS (usually port 587)' },
+                  { value: 'tls', label: 'SSL/TLS (usually port 465)' },
+                  { value: 'none', label: 'None (local relay only)' },
+                ],
+              },
+              { key: 'smtpUser', label: 'Username', kind: 'text', placeholder: 'you@gmail.com' },
+              { key: 'smtpPassword', label: 'Password or app password', kind: 'secret' },
+              { key: 'smtpFrom', label: 'Send from', kind: 'text', placeholder: 'Hardy Hub <you@gmail.com>' },
+            ]}
+            test={{ label: 'Send a test', run: () => api<TestResult>('/admin/notifications/test', 'POST') }}
+            footerNote="Save first, then send a test."
+          />
+          <SettingsSection
+            data={d}
+            title="Phone push notifications"
+            status={d.settings.ntfyTopic?.value || d.settings.pushoverAppToken?.isSet ? { ok: true, text: 'Set up' } : { ok: false, text: 'Not set up' }}
+            intro={
+              <p className="muted small">
+                <strong>ntfy</strong> (free, and you can self-host it): install the ntfy app, subscribe to your topic, and approval requests arrive with{' '}
+                <strong>Approve / Deny</strong> buttons. Pick a long, hard-to-guess topic name, or use your own ntfy server with an access token. Your phone must be able to reach
+                FamilyHub (on your home network or VPN) for the buttons to work. <strong>Pushover</strong> (one-time purchase): paste your app token and user or group key.
+              </p>
+            }
+            fields={[
+              { key: 'ntfyUrl', label: 'ntfy server', kind: 'url', placeholder: 'https://ntfy.sh' },
+              { key: 'ntfyTopic', label: 'ntfy topic', kind: 'text', placeholder: 'hardy-hub-chores-8f3k2' },
+              { key: 'ntfyToken', label: 'ntfy access token (optional)', kind: 'secret' },
+              { key: 'pushoverAppToken', label: 'Pushover app token', kind: 'secret' },
+              { key: 'pushoverUserKey', label: 'Pushover user or group key', kind: 'secret' },
+            ]}
+            test={{ label: 'Send a test', run: () => api<TestResult>('/admin/notifications/test', 'POST') }}
+            footerNote="Save first, then send a test."
+          />
+        </>
       )}
 
       {section === 'security' && (

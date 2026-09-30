@@ -8,6 +8,7 @@ import { searchLocations } from '../weather';
 import { applyGo2rtcConfig, go2rtcReachable, listCameras, webrtcConfig } from '../protect';
 import { SETTING_KEYS, SettingKey, describeSettings, getSetting, isLockedByEnv, saveSettings } from '../settings';
 import { HttpError, parse } from '../util';
+import { sendTestNotifications } from '../notify';
 
 /** Admin-only app configuration (mounted behind requireAdmin). */
 export const adminRouter = Router();
@@ -118,6 +119,30 @@ const Patch = z
     doorbellPopupEnabled: z.boolean().nullable().optional(),
     doorbellPopupSeconds: z.number().int().min(5).max(300).nullable().optional(),
     familyName: str(80),
+    choreApproval: z.enum(['off', 'kids', 'all']).nullable().optional(),
+    smtpHost: str(300),
+    smtpPort: z.number().int().min(1).max(65535).nullable().optional(),
+    smtpSecurity: z.enum(['starttls', 'tls', 'none']).nullable().optional(),
+    smtpUser: str(300),
+    smtpPassword: z.string().max(1000).nullable().optional(),
+    smtpFrom: str(300),
+    ntfyUrl: z
+      .string()
+      .trim()
+      .max(300)
+      .refine((v) => v === '' || /^https?:\/\//.test(v), 'must start with http:// or https://')
+      .nullable()
+      .optional(),
+    ntfyTopic: z
+      .string()
+      .trim()
+      .max(64)
+      .refine((v) => v === '' || /^[A-Za-z0-9_-]+$/.test(v), 'letters, numbers, - and _ only')
+      .nullable()
+      .optional(),
+    ntfyToken: z.string().max(500).nullable().optional(),
+    pushoverAppToken: z.string().max(100).nullable().optional(),
+    pushoverUserKey: z.string().max(100).nullable().optional(),
     camerasTileQuality: z.enum(['high', 'medium', 'low']).nullable().optional(),
     camerasPreload: z.enum(['off', 'tiles', 'all']).nullable().optional(),
     webrtcMode: z.enum(['off', 'lan']).nullable().optional(),
@@ -258,4 +283,9 @@ adminRouter.post('/protect/webrtc/apply', async (_req, res) => {
       ? `WebRTC is on for ${w.candidates.join(', ')}${r.changed ? ' (video relay restarted)' : ''}. Make sure port ${w.port} (TCP and UDP) is reachable on the server.`
       : `WebRTC is off; cameras use MSE streaming${r.changed ? ' (video relay restarted)' : ''}.`,
   });
+});
+
+/** Send a test message through every configured channel to the head of household who clicked. */
+adminRouter.post('/notifications/test', async (req, res) => {
+  res.json(await sendTestNotifications(req.user!));
 });

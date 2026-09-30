@@ -180,9 +180,9 @@ function ChoresWidget({ widget }: { widget: Widget }) {
         {list.map((c) => {
           const who = c.assigneeId ? byId.get(c.assigneeId) : null;
           return (
-            <button key={c.id} className={`task-row ${c.done ? 'is-done' : ''}`} onClick={() => toggle.mutate(c)}>
-              <span className={`task-check round ${c.done ? 'on' : ''}`} style={who ? ({ '--c': who.color } as CSSProperties) : undefined}>
-                {c.done && <Icon name="check" size={14} />}
+            <button key={c.id} className={`task-row ${c.status === 'approved' ? 'is-done' : ''}`} onClick={() => toggle.mutate(c)}>
+              <span className={`task-check round ${c.status === 'approved' ? 'on' : ''}`} style={who ? ({ '--c': who.color } as CSSProperties) : undefined}>
+                {c.status === 'approved' ? <Icon name="check" size={14} /> : c.status === 'pending' ? '⏳' : null}
               </span>
               <span className="task-body">
                 <span className="task-title">
@@ -190,7 +190,13 @@ function ChoresWidget({ widget }: { widget: Widget }) {
                 </span>
                 <span className="task-meta">
                   <Avatar member={who} size={16} /> {who?.name ?? 'Anyone'} · {c.frequency === 'daily' ? 'Daily' : c.frequency === 'weekly' ? 'Weekly' : 'Once'}
-                  {!c.done && <span className="due-today">Due today</span>}
+                  {c.status === 'pending' ? (
+                    <span className="waiting">Waiting for OK</span>
+                  ) : c.status === 'rejected' ? (
+                    <span className="due-today">Sent back</span>
+                  ) : (
+                    !c.done && <span className="due-today">Due today</span>
+                  )}
                 </span>
               </span>
             </button>

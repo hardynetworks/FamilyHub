@@ -65,6 +65,9 @@ membersRouter.patch('/:id', async (req, res) => {
           slideshowIdleMinutes: z.number().int().min(1).max(240).optional(),
           camerasMode: z.enum(['default', 'off', 'snapshots', 'live', 'snapshots_live']).optional(),
           doorbellPopup: z.boolean().optional(),
+          notifyEmail: z.boolean().optional(),
+          // email-to-text address, e.g. 5551234567@vtext.com (empty = off)
+          notifyText: z.union([z.literal(''), z.string().trim().email().max(200)]).optional(),
         })
         .strict()
         .optional(),

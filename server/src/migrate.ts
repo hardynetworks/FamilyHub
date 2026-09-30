@@ -184,6 +184,17 @@ create table devices (
     id: '005_item_priority',
     sql: `alter table list_items add column priority text not null default 'none' check (priority in ('none','low','medium','high'));`,
   },
+  {
+    id: '006_chore_approval',
+    sql: `
+alter table chore_completions
+  add column status text not null default 'approved' check (status in ('pending','approved','rejected')),
+  add column reviewed_by uuid references users(id) on delete set null,
+  add column reviewed_at timestamptz,
+  add column review_token_hash text unique;
+create index chore_completions_pending_idx on chore_completions (status) where status = 'pending';
+`,
+  },
 ];
 
 export async function migrate(): Promise<void> {
