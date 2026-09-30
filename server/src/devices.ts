@@ -24,6 +24,8 @@ export interface DeviceOptions {
   hideCursor: boolean;
   /** Reload the page once a night to keep long-running browsers healthy. */
   reloadNightly: boolean;
+  /** Family group this screen shows (null = the whole family). Switchable on the screen with the PIN. */
+  groupId: string | null;
 }
 
 export interface DeviceRow {
@@ -47,6 +49,7 @@ export const DEFAULT_DEVICE_OPTIONS: DeviceOptions = {
   returnHomeSeconds: 120,
   hideCursor: false,
   reloadNightly: true,
+  groupId: null,
 };
 
 export function deviceOptions(d: Pick<DeviceRow, 'options'>): DeviceOptions {
@@ -56,6 +59,7 @@ export function deviceOptions(d: Pick<DeviceRow, 'options'>): DeviceOptions {
     returnHomeSeconds: typeof o.returnHomeSeconds === 'number' ? o.returnHomeSeconds : DEFAULT_DEVICE_OPTIONS.returnHomeSeconds,
     hideCursor: typeof o.hideCursor === 'boolean' ? o.hideCursor : DEFAULT_DEVICE_OPTIONS.hideCursor,
     reloadNightly: typeof o.reloadNightly === 'boolean' ? o.reloadNightly : DEFAULT_DEVICE_OPTIONS.reloadNightly,
+    groupId: typeof o.groupId === 'string' && o.groupId ? o.groupId : null,
   };
 }
 

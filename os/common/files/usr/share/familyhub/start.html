@@ -11,9 +11,9 @@
   h1 { margin: 0; font-size: 34px; }
   #msg { font-size: 22px; font-weight: 600; margin: 0; }
   #detail { font-size: 16px; color: #a5b0cc; max-width: 640px; line-height: 1.5; margin: 0; }
-  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #818cf8; margin: 0 4px; animation: b 1.2s infinite; }
-  .dot:nth-child(2) { animation-delay: .2s } .dot:nth-child(3) { animation-delay: .4s }
-  @keyframes b { 0%, 80%, 100% { opacity: .2 } 40% { opacity: 1 } }
+  .spinner { width: 56px; height: 56px; border-radius: 50%; border: 5px solid #1c2540; border-top-color: #818cf8; animation: spin 0.9s linear infinite; margin-top: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #note { font-size: 17px; color: #c7d2fe; margin: 4px 0 0; font-weight: 600; }
   #settings { display: none; margin-top: 18px; font: inherit; font-size: 18px; font-weight: 650; color: #eef2ff; background: #1c2540;
               border: 1px solid #334066; border-radius: 14px; padding: 16px 26px; cursor: pointer; }
   #settings.show { display: inline-block; }
@@ -24,8 +24,9 @@
   <img src="icon.svg" alt="">
   <h1>FamilyHub</h1>
   <p id="msg">Starting…</p>
+  <div id="spinner" class="spinner" role="progressbar" aria-label="Loading"></div>
+  <p id="note">This might take a moment. Don’t unplug the device.</p>
   <p id="detail"></p>
-  <div id="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
   <button id="settings" type="button">Screen settings</button>
 <script>
   const cfg = window.FH || {};
@@ -50,7 +51,8 @@
     }
     msg.textContent = 'This screen isn’t connected to a FamilyHub yet.';
     detail.textContent = 'Connect a keyboard, press Ctrl+Alt+F2, sign in as “familyhub” and run: sudo familyhub-setup';
-    document.getElementById('dots').remove();
+    document.getElementById('spinner').remove();
+    document.getElementById('note').remove();
   }
 
   if (!url || cfg.setup) {

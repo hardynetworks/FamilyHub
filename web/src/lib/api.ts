@@ -95,11 +95,23 @@ export interface KioskOptions {
   returnHomeSeconds: number;
   hideCursor: boolean;
   reloadNightly: boolean;
+  /** Family group shown on the screen (null = the whole family). */
+  groupId: string | null;
 }
 export interface KioskDevice {
   id: string;
   name: string;
   options: KioskOptions;
+  /** The family group the screen shows (kiosk screens only). */
+  group?: { id: string; name: string; emoji: string | null; color: string } | null;
+}
+export interface FamilyGroup {
+  id: string;
+  name: string;
+  emoji: string | null;
+  color: string;
+  sort: number;
+  memberIds: string[];
 }
 export interface AdminDevice extends KioskDevice {
   userId: string;

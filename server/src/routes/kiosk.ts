@@ -16,6 +16,7 @@ import {
   normalizeCode,
   publicDevice,
 } from '../devices';
+import { getGroup, listGroups } from '../groups';
 import { getSetting, saveSettings } from '../settings';
 import { HttpError, parse, randomToken } from '../util';
 
@@ -56,6 +57,23 @@ kioskRouter.post('/unlock', async (req, res) => {
   res.json({ ok: true });
 });
 
+/** The family groups this screen can show, and which one it shows now. */
+kioskRouter.get('/groups', async (req, res) => {
+  if (!req.device) throw new HttpError(400, 'This browser is not a kiosk screen');
+  res.json({ groups: await listGroups(), current: deviceOptions(req.device).groupId });
+});
+
+/** Switch the family group shown on this screen (needs the kiosk PIN). */
+kioskRouter.post('/group', async (req, res) => {
+  if (!req.device) throw new HttpError(400, 'This browser is not a kiosk screen');
+  const { pin, groupId } = parse(z.object({ pin: z.string().max(20).optional(), groupId: z.string().uuid().nullable() }), req.body);
+  await checkPin(req, pin);
+  await groupExists(groupId);
+  const options = { ...deviceOptions(req.device), groupId };
+  await q('update devices set options = $2 where id = $1', [req.device.id, JSON.stringify(options)]);
+  res.json({ ok: true, groupId });
+});
+
 /** Sign this screen out (unpairs it; it stays in the list so it can be paired again). */
 kioskRouter.post('/forget', async (req, res) => {
   if (!req.device) throw new HttpError(400, 'This browser is not a kiosk screen');
@@ -80,8 +98,13 @@ const Options = z
     returnHomeSeconds: z.number().int().min(0).max(3600),
     hideCursor: z.boolean(),
     reloadNightly: z.boolean(),
+    groupId: z.string().uuid().nullable(),
   })
   .partial();
+
+async function groupExists(id: string | null | undefined) {
+  if (id && !(await getGroup(id))) throw new HttpError(400, 'That family group no longer exists');
+}
 
 async function memberExists(id: string) {
   if (!(await one('select 1 from users where id = $1', [id]))) throw new HttpError(400, 'Pick a family member for this screen');
@@ -105,6 +128,7 @@ devicesAdminRouter.get('/', async (req, res) => {
 devicesAdminRouter.post('/', async (req, res) => {
   const b = parse(z.object({ name: z.string().trim().min(1).max(60), userId: z.string().uuid(), options: Options.optional() }), req.body);
   await memberExists(b.userId);
+  await groupExists(b.options?.groupId);
   const options = { ...DEFAULT_DEVICE_OPTIONS, ...(b.options ?? {}) };
   const d = await one<DeviceRow>('insert into devices (name, user_id, options, created_by) values ($1, $2, $3, $4) returning *', [
     b.name,
@@ -121,6 +145,7 @@ devicesAdminRouter.patch('/:id', async (req, res) => {
   const cur = await one<DeviceRow>('select * from devices where id = $1', [id]);
   if (!cur) throw new HttpError(404, 'Screen not found');
   if (b.userId) await memberExists(b.userId);
+  await groupExists(b.options?.groupId);
   const options = { ...deviceOptions(cur), ...(b.options ?? {}) };
   const d = await one<DeviceRow>('update devices set name = $2, user_id = $3, options = $4 where id = $1 returning *', [
     id,

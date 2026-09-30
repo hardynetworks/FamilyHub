@@ -3,15 +3,17 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { MEMBER_COLORS, UserRow, publicUser, requireAdmin } from '../auth';
 import { one, q } from '../db';
+import { groupFilter } from '../groups';
 import { HttpError, parse } from '../util';
 
 export const membersRouter = Router();
 
 const color = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
-membersRouter.get('/', async (_req, res) => {
+membersRouter.get('/', async (req, res) => {
+  const group = await groupFilter(req);
   const rows = await q<UserRow>('select * from users order by created_at');
-  res.json(rows.map(publicUser));
+  res.json(rows.filter((u) => !group || group.has(u.id)).map(publicUser));
 });
 
 membersRouter.post('/', requireAdmin, async (req, res) => {

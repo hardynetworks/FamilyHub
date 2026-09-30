@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useContext } from 'react';
-import { AuthStatus, Member, api } from './api';
+import { AuthStatus, FamilyGroup, Member, api } from './api';
 
 export function useAuthStatus() {
   return useQuery({ queryKey: ['auth'], queryFn: () => api<AuthStatus>('/auth/status'), staleTime: 60_000 });
@@ -16,6 +16,12 @@ export function useMembers() {
   const members = q.data ?? [];
   const byId = new Map(members.map((m) => [m.id, m]));
   return { ...q, members, byId };
+}
+
+/** Family groups (Parents, Kids, ...). */
+export function useGroups() {
+  const q = useQuery({ queryKey: ['groups'], queryFn: () => api<FamilyGroup[]>('/groups'), staleTime: 60_000 });
+  return { ...q, groups: q.data ?? [] };
 }
 
 /** Mutation helper that invalidates the given query keys on success and reports errors through the toast. */

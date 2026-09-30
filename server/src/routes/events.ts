@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { config } from '../config';
 import { one, q } from '../db';
 import { CalendarRow, LocalEventInput, getCalendar, isWritable, mirrorPushed, pushCreate, pushDelete, pushPatch, syncCalendar } from '../google';
+import { anyInGroup, groupFilter } from '../groups';
 import { HttpError, parse, utcToWall, wallToUtc } from '../util';
 
 export const eventsRouter = Router();
@@ -104,6 +105,8 @@ eventsRouter.get('/', async (req, res) => {
   let out = single.map((r) => toDto(r));
   for (const r of recurring) for (const o of expand(r, ws, we)) out.push(toDto(r, o.start, o.end));
   if (memberId) out = out.filter((e) => e.memberIds.includes(memberId));
+  const group = await groupFilter(req);
+  if (group) out = out.filter((e) => anyInGroup(group, e.memberIds));
   out.sort((a, b) => a.start.localeCompare(b.start));
   res.json(out);
 });

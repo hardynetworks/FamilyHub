@@ -5,6 +5,7 @@ import { baseUrl } from '../config';
 import { one, q } from '../db';
 import { hashToken } from '../devices';
 import { notifyParents } from '../notify';
+import { forGroup, groupFilter } from '../groups';
 import { getSetting } from '../settings';
 import { HttpError, isoDate, parse, randomToken, todayInTz } from '../util';
 
@@ -47,16 +48,18 @@ function isDue(c: ChoreRow, date: string, today: string, doneOnce: boolean) {
   return c.due_date === date || (date === today && c.due_date < today && !doneOnce);
 }
 
-choresRouter.get('/', async (_req, res) => {
+choresRouter.get('/', async (req, res) => {
+  const group = await groupFilter(req);
   const rows = await q<ChoreRow>('select * from chores order by active desc, title');
-  res.json(rows.map(dto));
+  res.json(rows.filter((c) => forGroup(group, c.assignee_id)).map(dto));
 });
 
 choresRouter.get('/day', async (req, res) => {
   const { date } = parse(z.object({ date: isoDate.optional() }), req.query);
   const d = date ?? todayInTz();
   const today = todayInTz();
-  const chores = await q<ChoreRow>('select * from chores where active order by title');
+  const group = await groupFilter(req);
+  const chores = (await q<ChoreRow>('select * from chores where active order by title')).filter((c) => forGroup(group, c.assignee_id));
   const doneOn = await q<{ chore_id: string; completed_by: string | null; status: string }>(
     'select chore_id, completed_by, status from chore_completions where date = $1',
     [d],
@@ -215,5 +218,6 @@ choresRouter.get('/leaderboard', async (req, res) => {
      group by completed_by order by points desc`,
     [start, end],
   );
-  res.json(rows.map((r: any) => ({ memberId: r.member_id, points: r.points, count: r.count })));
+  const group = await groupFilter(req);
+  res.json(rows.filter((r: any) => forGroup(group, r.member_id)).map((r: any) => ({ memberId: r.member_id, points: r.points, count: r.count })));
 });

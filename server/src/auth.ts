@@ -41,6 +41,8 @@ declare global {
       user?: UserRow;
       /** The kiosk screen making this request, if any. */
       device?: DeviceRow;
+      /** The family group this kiosk screen shows (looked up once per request). */
+      groupCache?: unknown;
     }
   }
 }
@@ -200,10 +202,17 @@ authRouter.get('/status', async (req, res) => {
     google: { enabled: config.google.enabled },
     timezone: config.timezone,
     version: BOOT_ID,
-    device: req.device ? { id: req.device.id, name: req.device.name, options: deviceOptions(req.device) } : null,
+    device: req.device ? { id: req.device.id, name: req.device.name, options: deviceOptions(req.device), group: await screenGroup(req) } : null,
     kioskPinSet: !!getSetting('kioskPinHash'),
   });
 });
+
+/** Name and colour of the family group a kiosk screen shows. */
+async function screenGroup(req: Request) {
+  const id = req.device ? deviceOptions(req.device).groupId : null;
+  if (!id) return null;
+  return (await one<{ id: string; name: string; emoji: string | null; color: string }>('select id, name, emoji, color from family_groups where id = $1', [id])) ?? null;
+}
 
 authRouter.post('/setup', async (req, res) => {
   if (!config.localLogin) throw new HttpError(400, 'Local login is disabled; sign in with SSO to become the first admin.');

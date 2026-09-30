@@ -21,6 +21,7 @@ import { photosRouter } from './routes/photos';
 import { weatherRouter } from './routes/weather';
 import { homeRouter } from './routes/home';
 import { devicesAdminRouter, kioskRouter } from './routes/kiosk';
+import { groupsRouter } from './groups';
 import { approveRouter } from './routes/approve';
 import { pushRouter, startDoorbellPush } from './push';
 import { camerasRouter, go2rtcRouter } from './routes/cameras';
@@ -79,6 +80,7 @@ async function main() {
   app.use('/api/admin/devices', requireAdmin, devicesAdminRouter);
   app.use('/api/admin', requireAdmin, adminRouter);
   app.use('/api/members', requireAuth, membersRouter);
+  app.use('/api/groups', requireAuth, groupsRouter);
   app.use('/api/events', requireAuth, eventsRouter);
   app.use('/api/lists', requireAuth, listsRouter);
   app.use('/api/items', requireAuth, itemsRouter);

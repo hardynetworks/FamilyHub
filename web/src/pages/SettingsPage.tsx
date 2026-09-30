@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { AppSettings } from '../components/AppSettings';
 import { KioskAdmin } from '../components/KioskAdmin';
 import { useCameras } from '../components/Cameras';
+import { FamilyGroupsCard } from '../components/FamilyGroups';
 import { KeyboardSetting } from '../components/Kiosk';
 import { Avatar, COLOR_CHOICES, EMOJI_CHOICES, Field, Icon, Modal } from '../components/ui';
 import { GoogleStatus, Member, api } from '../lib/api';
@@ -408,6 +409,8 @@ function FamilyManager() {
             </div>
           </section>
         ))}
+
+      <FamilyGroupsCard isHead={isHead} />
 
       <section className="card">
         <h2>How roles work</h2>

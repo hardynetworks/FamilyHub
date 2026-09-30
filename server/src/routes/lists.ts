@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { one, q } from '../db';
+import { forGroup, groupFilter } from '../groups';
 import { HttpError, isoDate, parse } from '../util';
 
 export const listsRouter = Router();
@@ -57,8 +58,9 @@ listsRouter.delete('/:id', async (req, res) => {
 });
 
 listsRouter.get('/:id/items', async (req, res) => {
+  const group = await groupFilter(req);
   const rows = await q('select * from list_items where list_id = $1 order by checked, sort, created_at', [req.params.id]);
-  res.json(rows.map(itemDto));
+  res.json(rows.filter((r: any) => forGroup(group, r.assignee_id)).map(itemDto));
 });
 
 /** Add one or more items (newline-separated text adds several). */
@@ -131,11 +133,12 @@ itemsRouter.delete('/:id', async (req, res) => {
 });
 
 /** Open to-do items assigned to anyone, for the home dashboard. */
-itemsRouter.get('/open-todos', async (_req, res) => {
+itemsRouter.get('/open-todos', async (req, res) => {
+  const group = await groupFilter(req);
   const rows = await q(
     `select i.*, l.name as list_name from list_items i join lists l on l.id = i.list_id
      where l.kind = 'todo' and not i.checked
      order by case i.priority when 'high' then 0 when 'medium' then 1 when 'low' then 2 else 3 end, i.due_date nulls last, i.sort limit 50`,
   );
-  res.json(rows.map((r: any) => ({ ...itemDto(r), listName: r.list_name })));
+  res.json(rows.filter((r: any) => forGroup(group, r.assignee_id)).map((r: any) => ({ ...itemDto(r), listName: r.list_name })));
 });

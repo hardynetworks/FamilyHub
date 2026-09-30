@@ -373,6 +373,14 @@ Turn a tablet or a Raspberry Pi with a screen into a family dashboard that stays
    You then get a **pairing code** that works once, for 30 minutes.
 3. On the screen, open `https://<your FamilyHub>/kiosk` and enter the code. You can also open the pairing link shown with the code, which pairs straight away. The login page also has a "Set this screen up as a kiosk" link.
 
+### Family groups on a kiosk screen
+
+**Settings → Family → Groups** has groups like **Parents** and **Kids** (filled in from each person's adult/child setting the first time). Rename them, add more (Teens, Grandparents…) and choose who's in each; someone can be in more than one group.
+
+When you add or edit a kiosk screen, pick a **Family group** (or **Whole family**). The screen then only shows that group's calendar events, chores, to-dos and people, plus things meant for everyone (events with no one attached, and unassigned chores and to-dos).
+
+On the screen, the group button (🔒 next to the lock) switches the group: it asks for the kiosk PIN, then lets you pick. The choice is remembered on the screen.
+
 ### What a kiosk screen does
 
 - **Full screen with no menus:** no sidebar, no Settings, just Home and the pages you allowed, with big touch-friendly buttons. Tap once the first time to go full screen.

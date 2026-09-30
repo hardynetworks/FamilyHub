@@ -94,6 +94,7 @@ select.input { font-size: 19px; }
 .overlay.confirm { justify-content: flex-end; padding-bottom: 12vh; }
 .overlay.confirm .row { width: min(640px, 92vw); }
 .overlay.confirm .btn { flex: 1; min-height: 72px; font-size: 20px; }
+.overlay .note { color: #c7d2fe; font-weight: 600; margin: 0; }
 .spinner { width: 44px; height: 44px; border-radius: 50%; border: 4px solid var(--surface-2); border-top-color: var(--accent-2); animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 

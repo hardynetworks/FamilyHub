@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { CSSProperties, useState } from 'react';
 import { AdminDevice, KioskOptions, KioskPage, api } from '../lib/api';
-import { useMe, useMembers, useToast } from '../lib/hooks';
+import { useGroups, useMe, useMembers, useToast } from '../lib/hooks';
 import { CopyField, Empty, Field, Icon, Modal } from './ui';
 
 interface DevicesResponse {
@@ -48,6 +48,8 @@ function deviceKind(ua: string | null) {
 
 export function KioskAdmin() {
   const devices = useQuery({ queryKey: ['devices'], queryFn: () => api<DevicesResponse>('/admin/devices'), refetchInterval: 15_000 });
+  const { groups } = useGroups();
+  const groupName = (id: string) => groups.find((g) => g.id === id)?.name;
   const { byId } = useMembers();
   const qc = useQueryClient();
   const toast = useToast();
@@ -100,6 +102,7 @@ export function KioskAdmin() {
                         ? 'Waiting to be paired'
                         : 'Not paired: make a pairing code'}
                     {member ? ` · shows ${member.name}'s Home` : ''}
+                    {d.options.groupId && groupName(d.options.groupId) ? ` · ${groupName(d.options.groupId)} group` : ''}
                   </div>
                 </div>
                 <button className="btn btn-sm" onClick={() => newCode(d)} title="Make a new pairing code">
@@ -211,7 +214,10 @@ function DeviceModal({ device, onClose, onCreated }: { device: AdminDevice | nul
   const toast = useToast();
   const [name, setName] = useState(device?.name ?? 'Kitchen screen');
   const [userId, setUserId] = useState(device?.userId ?? me.id);
-  const [opts, setOpts] = useState<KioskOptions>(device?.options ?? { pages: ['calendar', 'lists', 'chores', 'meals'], returnHomeSeconds: 120, hideCursor: false, reloadNightly: true });
+  const { groups } = useGroups();
+  const [opts, setOpts] = useState<KioskOptions>(
+    device?.options ?? { pages: ['calendar', 'lists', 'chores', 'meals'], returnHomeSeconds: 120, hideCursor: false, reloadNightly: true, groupId: null },
+  );
   const [busy, setBusy] = useState(false);
   const set = (p: Partial<KioskOptions>) => setOpts((o) => ({ ...o, ...p }));
   const togglePage = (k: KioskPage) => set({ pages: opts.pages.includes(k) ? opts.pages.filter((p) => p !== k) : [...opts.pages, k] });
@@ -260,6 +266,27 @@ function DeviceModal({ device, onClose, onCreated }: { device: AdminDevice | nul
               </option>
             ))}
           </select>
+        </Field>
+        <Field
+          label="Family group"
+          hint="The screen only shows this group's calendar events, chores and to-dos (plus things for everyone). Switch it on the screen any time with the kiosk PIN."
+        >
+          <div className="group-picks">
+            <button type="button" className={`group-pick ${!opts.groupId ? 'on' : ''}`} onClick={() => set({ groupId: null })}>
+              <span className="group-pick-emoji">🏠</span> Whole family
+            </button>
+            {groups.map((g) => (
+              <button
+                type="button"
+                key={g.id}
+                className={`group-pick ${opts.groupId === g.id ? 'on' : ''}`}
+                style={{ '--group-color': g.color } as CSSProperties}
+                onClick={() => set({ groupId: g.id })}
+              >
+                <span className="group-pick-emoji">{g.emoji || '👥'}</span> {g.name}
+              </button>
+            ))}
+          </div>
         </Field>
         <Field label="Pages people can open" hint="Home is always there. Settings are never shown on a kiosk screen.">
           <div className="check-grid">

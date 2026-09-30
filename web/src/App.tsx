@@ -4,6 +4,7 @@ import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { DoorbellPopup } from './components/Cameras';
 import { KioskPairPage, KioskShell } from './components/Kiosk';
 import { resolveLayout, useApplyTheme, useHomeLayout } from './lib/layout';
+import { isFamilyHubOS } from './lib/touchKeyboard';
 import { useTouchKeyboard } from './lib/useTouchKeyboard';
 import { Avatar, Icon, Spinner } from './components/ui';
 import { api } from './lib/api';
@@ -41,7 +42,13 @@ export function App() {
   useTouchKeyboard(!!status?.device || pathname.startsWith('/kiosk'));
 
   let body;
-  if (isLoading) body = <div className="center-screen"><Spinner /></div>;
+  if (isLoading)
+    body = (
+      <div className="center-screen loading-screen">
+        <Spinner />
+        {isFamilyHubOS() && <p className="loading-note">This might take a moment. Don’t unplug the device.</p>}
+      </div>
+    );
   else if (error || !status) body = <div className="center-screen">Can't reach the server. Retrying…</div>;
   else if (pathname.startsWith('/kiosk') && !status.device) body = <KioskPairPage status={status} />;
   else if (status.user && status.device) body = <KioskShell status={status} />;

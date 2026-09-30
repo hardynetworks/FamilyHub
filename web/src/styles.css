@@ -227,6 +227,8 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .toast-success { background: var(--ok); color: #fff; }
 
 .center-screen { height: 100%; display: flex; align-items: center; justify-content: center; color: var(--ink-2); }
+.loading-screen { flex-direction: column; gap: 14px; min-height: 100vh; }
+.loading-note { margin: 0; font-weight: 600; color: var(--ink-2); }
 .spinner { width: 32px; height: 32px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -797,3 +799,39 @@ html.osk-open .modal-backdrop { bottom: var(--osk-h, 0px); }
 html.osk-open .modal { max-height: calc(100vh - var(--osk-h, 0px) - 24px); }
 html.osk-open .toasts { bottom: calc(var(--osk-h, 0px) + 16px); }
 html.osk-open .kiosk-nav, html.osk-open .kiosk-lock-float, html.osk-open .customize-fab { visibility: hidden; }
+
+/* ---------- Family groups ---------- */
+.card-head-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.card-head-row h2 { margin: 0; }
+.group-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.group-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--line);
+  border-left: 4px solid var(--group-color, var(--accent)); background: var(--surface); color: var(--ink); text-align: left; cursor: pointer; font: inherit; }
+.group-row:disabled { cursor: default; }
+.group-row:not(:disabled):hover { background: var(--surface-2); }
+.group-row .grow { display: flex; flex-direction: column; }
+.group-row-name { font-weight: 700; }
+.group-row-avatars { display: flex; }
+.group-row-avatars .avatar { margin-left: -6px; box-shadow: 0 0 0 2px var(--surface); }
+.group-badge { width: 40px; height: 40px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 22px; flex: none;
+  background: color-mix(in srgb, var(--group-color, var(--accent)) 18%, var(--surface)); }
+.group-members { display: flex; flex-wrap: wrap; gap: 8px; }
+.group-member { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface);
+  color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; }
+.group-member.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.group-picks { display: flex; flex-wrap: wrap; gap: 8px; }
+.group-pick { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface);
+  color: var(--ink); font: inherit; font-weight: 650; cursor: pointer; }
+.group-pick.on { border-color: var(--group-color, var(--accent)); background: color-mix(in srgb, var(--group-color, var(--accent)) 16%, var(--surface)); }
+.group-pick-emoji { font-size: 18px; }
+.group-switch-list { display: flex; flex-direction: column; gap: 10px; }
+.group-switch { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 68px; padding: 10px 16px; border-radius: 16px; border: 2px solid var(--line);
+  background: var(--surface); color: var(--ink); font: inherit; font-size: 20px; font-weight: 700; text-align: left; cursor: pointer; }
+.group-switch.on { border-color: var(--group-color, var(--accent)); background: color-mix(in srgb, var(--group-color, var(--accent)) 14%, var(--surface)); }
+.group-switch .group-badge { width: 48px; height: 48px; font-size: 26px; }
+.kiosk-nav .kiosk-group { flex: 0 0 auto; padding: 8px 14px; gap: 6px; }
+.kiosk-group-label { display: inline-flex; align-items: center; gap: 6px; }
+.kiosk-group-emoji { font-size: 20px; }
+.kiosk-group-float { position: fixed; top: calc(12px + env(safe-area-inset-top)); right: 12px; z-index: 40; display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--glass); color: var(--ink); font: inherit; font-weight: 700;
+  box-shadow: var(--shadow); backdrop-filter: blur(12px); cursor: pointer; }
+.kiosk-group-float .kiosk-group-lock, .kiosk-nav .kiosk-group-lock { opacity: 0.5; }

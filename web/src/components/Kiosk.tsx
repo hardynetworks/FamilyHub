@@ -21,6 +21,7 @@ import { HomePage } from '../pages/HomePage';
 import { ListsPage } from '../pages/ListsPage';
 import { MealsPage } from '../pages/MealsPage';
 import { DoorbellPopup } from './Cameras';
+import { GroupPicker } from './FamilyGroups';
 import { Field, Icon, Modal } from './ui';
 
 const PAGES: { key: KioskPage; to: string; label: string; icon: string; element: ReactNode; extra?: string }[] = [
@@ -38,6 +39,21 @@ export function KioskShell({ status }: { status: AuthStatus }) {
   const [unlocked, setUnlocked] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
   const [menu, setMenu] = useState<{ pin: string } | null>(null);
+  // Switching the family group: PIN first (when one is set), then the group list.
+  const [groupFlow, setGroupFlow] = useState<'pin' | { pin: string } | null>(null);
+  const qc = useQueryClient();
+  const toast = useToast();
+  const group = device.group ?? null;
+  const openGroups = () => (status.kioskPinSet ? setGroupFlow('pin') : setGroupFlow({ pin: '' }));
+  const groupButtonLabel = (
+    <span className="kiosk-group-label">
+      <span className="kiosk-group-emoji">{group?.emoji || '🏠'}</span>
+      <span>{group?.name ?? 'Whole family'}</span>
+      <span className="kiosk-group-lock">
+        <Icon name="lock" size={14} />
+      </span>
+    </span>
+  );
   const layout = useHomeLayout();
   useApplyTheme(layout.isSuccess ? resolveLayout(layout.data).theme : undefined);
 
@@ -98,6 +114,9 @@ export function KioskShell({ status }: { status: AuthStatus }) {
                 <span>{p.label}</span>
               </NavLink>
             ))}
+            <button className="tab kiosk-group" onClick={openGroups} aria-label="Switch the family group shown">
+              {groupButtonLabel}
+            </button>
             {unlocked ? (
               <button className="tab kiosk-unlocked" onClick={lockNow} title="Lock the screen again">
                 <Icon name="lock" size={24} />
@@ -110,9 +129,14 @@ export function KioskShell({ status }: { status: AuthStatus }) {
             )}
           </nav>
         ) : (
-          <button className="kiosk-lock-float" onClick={unlocked ? lockNow : openLock} aria-label={unlocked ? 'Lock now' : 'Kiosk menu'}>
-            <Icon name="lock" size={18} />
-          </button>
+          <>
+            <button className="kiosk-group-float" onClick={openGroups} aria-label="Switch the family group shown">
+              {groupButtonLabel}
+            </button>
+            <button className="kiosk-lock-float" onClick={unlocked ? lockNow : openLock} aria-label={unlocked ? 'Lock now' : 'Kiosk menu'}>
+              <Icon name="lock" size={18} />
+            </button>
+          </>
         )}
 
         {!online && <div className="kiosk-offline">Can’t reach {status.appName}. Reconnecting…</div>}
@@ -131,6 +155,21 @@ export function KioskShell({ status }: { status: AuthStatus }) {
             onUnlocked={(pin) => {
               setPinOpen(false);
               setMenu({ pin });
+            }}
+          />
+        )}
+        {groupFlow === 'pin' && <PinPad onClose={() => setGroupFlow(null)} onUnlocked={(pin) => setGroupFlow({ pin })} />}
+        {groupFlow && groupFlow !== 'pin' && (
+          <GroupPicker
+            pin={groupFlow.pin}
+            current={opts.groupId}
+            onClose={() => setGroupFlow(null)}
+            onChanged={(name) => {
+              setGroupFlow(null);
+              navigate('/');
+              // Everything on the screen is filtered by group on the server: reload it all.
+              qc.invalidateQueries();
+              toast(`Now showing: ${name}`, 'success');
             }}
           />
         )}

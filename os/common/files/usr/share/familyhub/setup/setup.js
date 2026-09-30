@@ -237,7 +237,7 @@
       html += `<div class="overlay confirm"><h2>Is the screen the right way up?</h2><p class="muted">Tap <strong>Keep</strong> if the picture and touch both look right. Otherwise it goes back in <strong id="confirm-left">${ui.confirmLeft}</strong> seconds.</p>` +
         `<div class="row"><button class="btn" data-a="rotate-undo">Undo</button><button class="btn btn-primary" data-a="rotate-keep">Keep</button></div></div>`;
     } else if (ui.busy) {
-      html += `<div class="overlay"><div class="spinner"></div><h2>${esc(ui.busy)}</h2></div>`;
+      html += `<div class="overlay"><div class="spinner"></div><h2>${esc(ui.busy)}</h2>${ui.restarting ? '<p class="note">This might take a moment. Don’t unplug the device.</p>' : ''}</div>`;
     }
     app.innerHTML = html;
     if (active) {
@@ -298,11 +298,13 @@
 
   async function restartingTo(msg, body, path) {
     ui.busy = msg;
+    ui.restarting = true;
     render();
     try {
       await api(path || 'save', body);
     } catch (e) {
       ui.busy = '';
+      ui.restarting = false;
       ui.error = e.message;
       render();
     }
@@ -336,6 +338,7 @@
     async rotate(v) {
       if (v === S.rotate) return;
       ui.busy = 'Turning the screen…';
+      ui.restarting = true;
       render();
       try {
         const r = await api('rotate', { rotate: v });
@@ -365,6 +368,7 @@
       clearInterval(confirmTimer);
       ui.confirmLeft = 0;
       ui.busy = 'Putting the screen back…';
+      ui.restarting = true;
       render();
       await api('rotate/undo', {}).catch(() => {});
     },

@@ -210,6 +210,28 @@ create table push_tokens (
 create index push_tokens_user_idx on push_tokens (user_id);
 `,
   },
+  {
+    id: '008_family_groups',
+    sql: `
+create table family_groups (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  emoji text,
+  color text not null default '#6366f1',
+  sort int not null default 0,
+  created_at timestamptz not null default now()
+);
+create table family_group_members (
+  group_id uuid not null references family_groups(id) on delete cascade,
+  user_id uuid not null references users(id) on delete cascade,
+  primary key (group_id, user_id)
+);
+with g as (insert into family_groups (name, emoji, color, sort) values ('Parents', '👪', '#6366f1', 0) returning id)
+insert into family_group_members (group_id, user_id) select g.id, u.id from g, users u where u.member_type = 'adult';
+with g as (insert into family_groups (name, emoji, color, sort) values ('Kids', '🧒', '#f59e0b', 1) returning id)
+insert into family_group_members (group_id, user_id) select g.id, u.id from g, users u where u.member_type = 'child';
+`,
+  },
 ];
 
 export async function migrate(): Promise<void> {
