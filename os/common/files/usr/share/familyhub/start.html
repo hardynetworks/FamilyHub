@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>FamilyHub</title>
+<style>
+  html, body { height: 100%; margin: 0; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: #f7f3ee; color: #2b2724;
+         font-family: system-ui, "DejaVu Sans", sans-serif; text-align: center; cursor: none; user-select: none; }
+  img { width: 96px; height: 96px; }
+  h1 { margin: 0; font-size: 34px; }
+  #msg { font-size: 22px; font-weight: 600; margin: 0; }
+  #detail { font-size: 16px; color: #6b635c; max-width: 640px; line-height: 1.5; margin: 0; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #e8664a; margin: 0 4px; animation: b 1.2s infinite; }
+  .dot:nth-child(2) { animation-delay: .2s } .dot:nth-child(3) { animation-delay: .4s }
+  @keyframes b { 0%, 80%, 100% { opacity: .2 } 40% { opacity: 1 } }
+  @media (prefers-color-scheme: dark) { body { background: #1b1a19; color: #f2ede6; } #detail { color: #a89f97; } }
+</style>
+<script src="config.js"></script>
+</head>
+<body>
+  <img src="icon.svg" alt="">
+  <h1>FamilyHub</h1>
+  <p id="msg">Starting…</p>
+  <p id="detail"></p>
+  <div id="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+<script>
+  const cfg = window.FH || {};
+  const url = (cfg.url || '').replace(/\/+$/, '');
+  const msg = document.getElementById('msg');
+  const detail = document.getElementById('detail');
+  if (!url) {
+    msg.textContent = 'This screen isn’t connected to a FamilyHub yet.';
+    detail.textContent = 'Connect a keyboard, press Ctrl+Alt+F2, sign in as “familyhub” and run: sudo familyhub-setup';
+    document.getElementById('dots').remove();
+  } else {
+    let tries = 0;
+    const target = url + '/kiosk' + (cfg.code ? '?code=' + encodeURIComponent(cfg.code) : '');
+    const check = async () => {
+      try {
+        // no-cors: we only need to know the server answers.
+        await fetch(url + '/api/health', { mode: 'no-cors', cache: 'no-store' });
+        msg.textContent = 'Opening FamilyHub…';
+        location.replace(target);
+      } catch (e) {
+        tries++;
+        msg.textContent = 'Waiting for the network…';
+        detail.textContent = 'Trying to reach ' + url + (tries > 4 ? '. Check the network cable or Wi-Fi. To change settings, connect a keyboard, press Ctrl+Alt+F2 and run: sudo familyhub-setup' : '');
+        setTimeout(check, Math.min(15000, 2000 + tries * 1000));
+      }
+    };
+    check();
+  }
+</script>
+</body>
+</html>

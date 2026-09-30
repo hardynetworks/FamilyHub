@@ -1,0 +1,16 @@
+# pi-gen settings for FamilyHub OS (Raspberry Pi, 64-bit, no desktop)
+IMG_NAME="FamilyHubOS-kiosk"
+PI_GEN_RELEASE="FamilyHub OS"
+DEPLOY_COMPRESSION=xz
+COMPRESSION_LEVEL=6
+TARGET_HOSTNAME=familyhub-kiosk
+FIRST_USER_NAME=familyhub
+FIRST_USER_PASS=familyhub
+DISABLE_FIRST_BOOT_USER_RENAME=1
+ENABLE_SSH=0
+LOCALE_DEFAULT=en_US.UTF-8
+KEYBOARD_KEYMAP=us
+KEYBOARD_LAYOUT="English (US)"
+TIMEZONE_DEFAULT=America/Denver
+WPA_COUNTRY=US
+STAGE_LIST="stage0 stage1 stage2 stage-familyhub"

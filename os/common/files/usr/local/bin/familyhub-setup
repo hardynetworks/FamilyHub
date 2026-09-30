@@ -1,0 +1,106 @@
+#!/bin/bash
+# FamilyHub OS setup menu. On the kiosk: press Ctrl+Alt+F2, sign in as "familyhub", run: sudo familyhub-setup
+CONF=/etc/familyhub/kiosk.conf
+[ "$(id -u)" = 0 ] || exec sudo "$0" "$@"
+export NEWT_COLORS='root=,black window=,white border=black,white title=black,white button=white,red actbutton=white,red'
+TITLE="FamilyHub OS"
+conf() { sed -n "s/^$1=\"\{0,1\}\([^\"]*\)\"\{0,1\}\$/\1/p" "$CONF" 2>/dev/null | tail -n 1; }
+setconf() {
+  if grep -q "^$1=" "$CONF"; then sed -i "s|^$1=.*|$1=\"$2\"|" "$CONF"; else echo "$1=\"$2\"" >> "$CONF"; fi
+}
+msg() { whiptail --title "$TITLE" --msgbox "$1" 14 70; }
+
+set_timezone_from_server() {
+  local url tz
+  url="$(conf FAMILYHUB_URL)"
+  [ -n "$url" ] || return 1
+  tz="$(curl -fsS -m 8 "$url/api/auth/status" 2>/dev/null | grep -o '"timezone":"[^"]*"' | cut -d'"' -f4)"
+  if [ -n "$tz" ] && [ -f "/usr/share/zoneinfo/$tz" ]; then timedatectl set-timezone "$tz" && echo "$tz"; return 0; fi
+  return 1
+}
+
+set_url() {
+  local cur url
+  cur="$(conf FAMILYHUB_URL)"
+  url="$(whiptail --title "$TITLE" --inputbox "Your FamilyHub address (the one you open in a browser):\n\ne.g. https://family.example.com" 12 70 "$cur" 3>&1 1>&2 2>&3)" || return 1
+  url="$(printf '%s' "$url" | tr -d ' ')"
+  [ -n "$url" ] || return 1
+  case "$url" in http://*|https://*) ;; *) url="https://$url" ;; esac
+  url="$(printf '%s' "$url" | sed 's|/kiosk/*$||; s|/*$||' | tr -cd 'A-Za-z0-9:/._~%-')"
+  if curl -fsS -m 8 "$url/api/health" >/dev/null 2>&1; then
+    setconf FAMILYHUB_URL "$url"
+    local tz; tz="$(set_timezone_from_server)" && msg "Connected to $url\n\nTime zone set to $tz (from your FamilyHub)."
+  else
+    if whiptail --title "$TITLE" --yesno "Couldn't reach $url right now.\n\nCheck the network (Wi-Fi is in the main menu) and the address.\n\nSave it anyway?" 14 70; then
+      setconf FAMILYHUB_URL "$url"
+    else
+      return 1
+    fi
+  fi
+}
+
+set_code() {
+  local code
+  code="$(whiptail --title "$TITLE" --inputbox "Pairing code from FamilyHub (Settings -> App settings -> Kiosk screens -> Add a screen).\n\nLeave empty to type it on the screen instead." 13 70 3>&1 1>&2 2>&3)" || return 0
+  code="$(printf '%s' "$code" | tr -cd 'A-Za-z0-9-')"
+  if [ -n "$code" ]; then
+    mkdir -p /run/familyhub && chown kiosk: /run/familyhub
+    printf '%s' "$code" > /run/familyhub/pair-code && chmod 644 /run/familyhub/pair-code
+  fi
+}
+
+set_rotate() {
+  local r
+  r="$(whiptail --title "$TITLE" --menu "Screen rotation" 15 60 4 normal "Normal" 90 "90 degrees" 180 "Upside down" 270 "270 degrees" 3>&1 1>&2 2>&3)" || return 0
+  setconf ROTATE "$r"
+}
+
+set_tz() {
+  local tz
+  if tz="$(set_timezone_from_server)"; then msg "Time zone set to $tz (from your FamilyHub)."; else dpkg-reconfigure tzdata; fi
+}
+
+restart_kiosk() { systemctl restart familyhub-kiosk.service; }
+
+if [ "${1:-}" = "--first-boot" ]; then
+  [ -n "$(conf FAMILYHUB_URL)" ] && exit 0
+  clear
+  msg "Welcome to FamilyHub OS!\n\nThis screen will show your family's FamilyHub dashboard.\nLet's connect it. (Use a keyboard: arrow keys, Tab and Enter.)"
+  until [ -n "$(conf FAMILYHUB_URL)" ]; do
+    if ! nmcli -t -f STATE general 2>/dev/null | grep -q '^connected'; then
+      if whiptail --title "$TITLE" --yesno "This device isn't connected to a network.\n\nSet up Wi-Fi now? (Choose No if you'll plug in a network cable.)" 12 70; then nmtui connect; fi
+    fi
+    set_url || true
+  done
+  set_code
+  clear
+  exit 0
+fi
+
+while true; do
+  choice="$(whiptail --title "$TITLE" --menu "FamilyHub address: $(conf FAMILYHUB_URL)\nTime zone: $(timedatectl show -p Timezone --value 2>/dev/null)" 22 74 10 \
+    1 "FamilyHub address" \
+    2 "Wi-Fi" \
+    3 "Pairing code" \
+    4 "Time zone" \
+    5 "Rotate the screen" \
+    6 "Reset this screen's sign-in (needs a new pairing code)" \
+    7 "Change the admin password" \
+    8 "Restart the kiosk" \
+    9 "Reboot" \
+    0 "Exit" 3>&1 1>&2 2>&3)" || break
+  case "$choice" in
+    1) set_url && restart_kiosk ;;
+    2) nmtui ;;
+    3) set_code && restart_kiosk ;;
+    4) set_tz ;;
+    5) set_rotate && restart_kiosk ;;
+    6) whiptail --title "$TITLE" --yesno "Sign this screen out of FamilyHub? You'll need a new pairing code from Settings -> Kiosk screens." 10 70 && { systemctl stop familyhub-kiosk.service; rm -rf /home/kiosk/.config/familyhub-browser; systemctl start familyhub-kiosk.service; } ;;
+    7) passwd "${SUDO_USER:-familyhub}" ;;
+    8) restart_kiosk; msg "The kiosk is restarting. Press Ctrl+Alt+F1 to go back to it." ;;
+    9) reboot ;;
+    0) break ;;
+  esac
+done
+clear
+echo "Press Ctrl+Alt+F1 to go back to the kiosk screen."

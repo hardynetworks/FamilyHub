@@ -387,6 +387,16 @@ A web page can't stop someone pressing the tablet's own Home button, so use the 
      On newer Raspberry Pi OS versions the command is `chromium` instead of `chromium-browser`.
   3. Reboot, enter the pairing code once, and it will start straight into FamilyHub from then on.
 
+### FamilyHub OS: ready-made kiosk images
+
+Don't want to set a screen up by hand? **[FamilyHub OS](os/README.md)** boots straight into a FamilyHub kiosk:
+
+- **Raspberry Pi:** flash `FamilyHubOS-RaspberryPi-arm64.img.xz` to a microSD card. To set it up without a keyboard, fill in `familyhub.txt` on the card first: FamilyHub address, Wi-Fi and pairing code.
+- **x86 PCs** (mini PCs, NUCs, old laptops): flash `FamilyHubOS-x86_64.iso` to a USB stick and boot it. It installs itself (erasing the disk).
+- **Windows PCs:** run `Install.cmd` from `FamilyHub-Kiosk-Windows.zip`. FamilyHub then opens full screen in Edge at every sign-in.
+
+Downloads are on the **Releases** page. See [os/README.md](os/README.md) for step-by-step instructions.
+
 ## Weather
 
 Home shows the current conditions and a forecast. The calendar shows each day's forecast (up to 14 days ahead), and the photo slideshow shows the temperature in a corner. The data comes from [Open-Meteo](https://open-meteo.com), which is free and needs no API key. FamilyHub fetches it on the server and caches it for 15 minutes.
@@ -497,7 +507,7 @@ web/src
 
 ### Roadmap ideas
 
-- A downloadable **FamilyHub OS image for Raspberry Pi** that boots straight into a kiosk screen, with Wi-Fi and pairing set up on first boot.
+- **FamilyHub OS all-in-one:** an option to run the FamilyHub server on the kiosk device itself (see the [FamilyHub OS to-do list](os/README.md#to-do)).
 - Night dimming for kiosk screens.
 - A family message board.
 - Push notifications.

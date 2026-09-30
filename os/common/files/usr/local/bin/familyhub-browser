@@ -1,0 +1,42 @@
+#!/bin/bash
+# Runs inside the cage kiosk compositor as the "kiosk" user: rotates the screen, then keeps
+# Chromium open full screen on the FamilyHub start page (restarting it if it ever closes).
+CONF=/etc/familyhub/kiosk.conf
+conf() { sed -n "s/^$1=\"\{0,1\}\([^\"]*\)\"\{0,1\}\$/\1/p" "$CONF" 2>/dev/null | tail -n 1; }
+json() { printf '"%s"' "$(printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g')"; }
+
+URL="$(conf FAMILYHUB_URL)"
+ROTATE="$(conf ROTATE)"
+CODE=""
+[ -r /run/familyhub/pair-code ] && CODE="$(tr -cd 'A-Za-z0-9-' < /run/familyhub/pair-code)"
+
+if [ -n "$ROTATE" ] && [ "$ROTATE" != normal ] && command -v wlr-randr >/dev/null; then
+  OUT="$(wlr-randr | awk '/^[^ ]/ {print $1; exit}')"
+  [ -n "$OUT" ] && wlr-randr --output "$OUT" --transform "$ROTATE" || true
+fi
+
+APP="$HOME/.cache/familyhub"
+PROFILE="$HOME/.config/familyhub-browser"
+mkdir -p "$APP" "$PROFILE"
+cp /usr/share/familyhub/start.html /usr/share/familyhub/icon.svg "$APP/"
+BROWSER="$(command -v chromium || command -v chromium-browser)"
+
+first=1
+while true; do
+  # The pairing code (from familyhub.txt or the setup menu) is only offered on the first start.
+  [ "$first" = 1 ] || CODE=""
+  first=0
+  printf 'window.FH = { url: %s, code: %s };\n' "$(json "$URL")" "$(json "$CODE")" > "$APP/config.js"
+  # Don't show "Chromium didn't shut down correctly" after a power cut.
+  sed -i 's/"exited_cleanly":false/"exited_cleanly":true/; s/"exit_type":"[^"]*"/"exit_type":"Normal"/' "$PROFILE/Default/Preferences" 2>/dev/null
+  "$BROWSER" \
+    --kiosk --ozone-platform=wayland \
+    --user-data-dir="$PROFILE" \
+    --no-first-run --no-default-browser-check --noerrdialogs --disable-infobars \
+    --disable-session-crashed-bubble --disable-features=Translate,TranslateUI \
+    --overscroll-history-navigation=0 --disable-pinch \
+    --autoplay-policy=no-user-gesture-required \
+    --password-store=basic --check-for-update-interval=31536000 \
+    "file://$APP/start.html"
+  sleep 2
+done

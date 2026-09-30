@@ -1,0 +1,5 @@
+# FamilyHub OS kiosk settings. Change them with: sudo familyhub-setup
+# Your FamilyHub address, e.g. https://family.example.com
+FAMILYHUB_URL=""
+# Screen rotation: normal, 90, 180 or 270
+ROTATE="normal"

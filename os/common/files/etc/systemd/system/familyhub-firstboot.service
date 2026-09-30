@@ -1,0 +1,17 @@
+[Unit]
+Description=FamilyHub OS first-time setup
+After=familyhub-boot.service systemd-user-sessions.service
+Before=familyhub-kiosk.service
+Conflicts=getty@tty1.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/familyhub-setup --first-boot
+StandardInput=tty
+StandardOutput=tty
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+
+[Install]
+WantedBy=graphical.target

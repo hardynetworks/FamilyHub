@@ -1,0 +1,58 @@
+#!/bin/bash
+# Applies settings from familyhub.txt on the SD card's boot partition (Raspberry Pi), so a
+# screen can be set up from a PC before its first boot. Secrets are blanked after use.
+set -u
+CONF=/etc/familyhub/kiosk.conf
+mkdir -p /run/familyhub
+chown kiosk: /run/familyhub 2>/dev/null || true
+
+for f in /boot/firmware/familyhub.txt /boot/familyhub.txt; do [ -f "$f" ] && BOOT="$f" && break; done
+[ -n "${BOOT:-}" ] || exit 0
+val() {
+  local line v
+  line="$(grep -E "^[[:space:]]*$1[[:space:]]*=" "$BOOT" | tail -n 1 | tr -d '\r')" || true
+  [ -n "$line" ] || return 0
+  v="${line#*=}"
+  v="${v#"${v%%[![:space:]]*}"}"; v="${v%"${v##*[![:space:]]}"}"
+  case "$v" in \"*\") v="${v:1:${#v}-2}" ;; esac
+  printf '%s' "$v"
+}
+blank() { sed -i "s/^\([[:space:]]*$1[[:space:]]*=\).*/\1/" "$BOOT"; }
+setconf() {
+  if grep -q "^$1=" "$CONF"; then sed -i "s|^$1=.*|$1=\"$2\"|" "$CONF"; else echo "$1=\"$2\"" >> "$CONF"; fi
+}
+
+URL="$(val FAMILYHUB_URL)"
+if [ -n "$URL" ]; then
+  case "$URL" in http://*|https://*) ;; *) URL="https://$URL" ;; esac
+  URL="$(printf '%s' "$URL" | sed 's|/kiosk/*$||; s|/*$||' | tr -cd 'A-Za-z0-9:/._~%-')"
+  setconf FAMILYHUB_URL "$URL"
+fi
+ROT="$(val ROTATE)"
+case "$ROT" in normal|90|180|270) setconf ROTATE "$ROT" ;; esac
+TZ_NAME="$(val TIMEZONE)"
+[ -n "$TZ_NAME" ] && [ -f "/usr/share/zoneinfo/$TZ_NAME" ] && timedatectl set-timezone "$TZ_NAME"
+
+CODE="$(val PAIRING_CODE)"
+if [ -n "$CODE" ]; then
+  printf '%s' "$CODE" > /run/familyhub/pair-code
+  chmod 644 /run/familyhub/pair-code
+  blank PAIRING_CODE
+fi
+
+SSID="$(val WIFI_SSID)"
+PSK="$(val WIFI_PASSWORD)"
+COUNTRY="$(val WIFI_COUNTRY)"
+if [ -n "$COUNTRY" ] && command -v raspi-config >/dev/null; then raspi-config nonint do_wifi_country "$COUNTRY" || true; fi
+if [ -n "$SSID" ]; then
+  rfkill unblock wifi 2>/dev/null || true
+  nmcli connection delete familyhub-wifi >/dev/null 2>&1 || true
+  if [ -n "$PSK" ]; then
+    nmcli connection add type wifi con-name familyhub-wifi ssid "$SSID" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$PSK" connection.autoconnect yes
+  else
+    nmcli connection add type wifi con-name familyhub-wifi ssid "$SSID" connection.autoconnect yes
+  fi
+  nmcli connection up familyhub-wifi || true
+  blank WIFI_PASSWORD
+fi
+exit 0

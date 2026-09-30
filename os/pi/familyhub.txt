@@ -1,0 +1,26 @@
+# ===================================================================
+#  FamilyHub OS settings. Edit this file on your PC before the first
+#  boot (it's on the SD card's "bootfs" drive). Lines starting with #
+#  are ignored. Wi-Fi password and pairing code are wiped after use.
+# ===================================================================
+
+# Your FamilyHub address (what you open in a browser)
+FAMILYHUB_URL=
+
+# Wi-Fi (leave empty if you use a network cable)
+WIFI_SSID=
+WIFI_PASSWORD=
+# Two-letter country code, e.g. US, GB, CA, AU
+WIFI_COUNTRY=US
+
+# Optional: pairing code from FamilyHub -> Settings -> App settings ->
+# Kiosk screens -> Add a screen (valid for 30 minutes). If you leave
+# it empty, type the code on the screen with a keyboard instead.
+PAIRING_CODE=
+
+# Optional: time zone, e.g. America/Denver (otherwise taken from
+# your FamilyHub when you run the setup menu)
+TIMEZONE=
+
+# Screen rotation: normal, 90, 180 or 270
+ROTATE=normal
