@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Avatar, Empty, Field, Icon, Modal } from '../components/ui';
-import { List, ListItem, api } from '../lib/api';
+import { Avatar, Empty, Field, Icon, Modal, PriorityBadge } from '../components/ui';
+import { List, ListItem, Priority, api } from '../lib/api';
 import { relativeDayLabel, today } from '../lib/dates';
 import { useAction, useMembers } from '../lib/hooks';
 
@@ -103,6 +103,7 @@ function ListView({ list, onEdit }: { list: List; onEdit: () => void }) {
             <button className="item-text" onClick={() => setEditing(i)}>
               {i.text}
             </button>
+            <PriorityBadge priority={i.priority} />
             {i.dueDate && <span className={`due ${i.dueDate < t ? 'overdue' : ''}`}>{relativeDayLabel(i.dueDate)}</span>}
             {i.assigneeId && <Avatar member={byId.get(i.assigneeId)} size={22} />}
           </li>
@@ -141,8 +142,9 @@ function ItemModal({ item, members, onClose }: { item: ListItem; members: Return
   const [text, setText] = useState(item.text);
   const [assigneeId, setAssigneeId] = useState(item.assigneeId ?? '');
   const [dueDate, setDueDate] = useState(item.dueDate ?? '');
+  const [priority, setPriority] = useState<Priority>(item.priority ?? 'none');
   const inv = [['items'], ['lists']];
-  const save = useAction(() => api(`/items/${item.id}`, 'PATCH', { text, assigneeId: assigneeId || null, dueDate: dueDate || null }), inv, onClose);
+  const save = useAction(() => api(`/items/${item.id}`, 'PATCH', { text, assigneeId: assigneeId || null, dueDate: dueDate || null, priority }), inv, onClose);
   const del = useAction(() => api(`/items/${item.id}`, 'DELETE'), inv, onClose);
   return (
     <Modal
@@ -176,6 +178,15 @@ function ItemModal({ item, members, onClose }: { item: ListItem; members: Return
             <input className="input" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
           </Field>
         </div>
+        <Field label="Priority">
+          <div className="seg">
+            {(['none', 'low', 'medium', 'high'] as Priority[]).map((p) => (
+              <button key={p} type="button" className={priority === p ? 'on' : ''} onClick={() => setPriority(p)}>
+                {p === 'none' ? 'None' : p[0].toUpperCase() + p.slice(1)}
+              </button>
+            ))}
+          </div>
+        </Field>
       </div>
     </Modal>
   );

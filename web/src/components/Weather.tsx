@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { WeatherData, api } from '../lib/api';
 import { fmtWeekday, today } from '../lib/dates';
+import { Icon } from './ui';
 
 export function useWeather() {
   return useQuery({
@@ -95,46 +96,186 @@ export function WeatherNow() {
   );
 }
 
-/** Forecast card for the Home grid. */
-export function WeatherCard({ days = 6, fill = false }: { days?: number; fill?: boolean } = {}) {
+/** Moon phase from the date (no API needed). */
+export function moonPhase(d = new Date()) {
+  const synodic = 29.530588853;
+  const knownNew = Date.UTC(2000, 0, 6, 18, 14);
+  const age = ((((d.getTime() - knownNew) / 86400000) % synodic) + synodic) % synodic;
+  const f = age / synodic;
+  const phases = [
+    ['New moon', '🌑'],
+    ['Waxing crescent', '🌒'],
+    ['First quarter', '🌓'],
+    ['Waxing gibbous', '🌔'],
+    ['Full moon', '🌕'],
+    ['Waning gibbous', '🌖'],
+    ['Last quarter', '🌗'],
+    ['Waning crescent', '🌘'],
+  ];
+  const [name, icon] = phases[Math.round(f * 8) % 8];
+  return { name, icon, illumination: Math.round(((1 - Math.cos(2 * Math.PI * f)) / 2) * 100) };
+}
+
+/** "2026-09-30T06:52" (location-local) -> minutes since midnight. */
+const minutesOf = (iso?: string) => {
+  const m = iso?.match(/T(\d{2}):(\d{2})/);
+  return m ? Number(m[1]) * 60 + Number(m[2]) : NaN;
+};
+const clockLabel = (iso?: string) => {
+  const mins = minutesOf(iso);
+  if (!Number.isFinite(mins)) return '–';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+};
+const hourLabel = (iso: string, first: boolean) => {
+  if (first) return 'Now';
+  const h = Number(iso.slice(11, 13));
+  return `${((h + 11) % 12) + 1}${h < 12 ? 'am' : 'pm'}`;
+};
+
+/** Colour for a temperature (blue → teal → yellow → orange → red), for the forecast bars. */
+function tempColor(t: number, units: string | undefined) {
+  const f = units === 'celsius' ? t * 1.8 + 32 : t;
+  const stops: [number, string][] = [
+    [20, '#60a5fa'],
+    [45, '#22d3ee'],
+    [62, '#a3e635'],
+    [75, '#facc15'],
+    [85, '#fb923c'],
+    [98, '#ef4444'],
+  ];
+  for (let i = 0; i < stops.length; i++) if (f <= stops[i][0]) return stops[i][1];
+  return stops[stops.length - 1][1];
+}
+
+/** Daylight arc: where the sun is between sunrise and sunset. */
+function SunArc({ sunrise, sunset, now }: { sunrise?: string; sunset?: string; now?: string }) {
+  const rise = minutesOf(sunrise);
+  const set = minutesOf(sunset);
+  const cur = minutesOf(now);
+  if (![rise, set, cur].every(Number.isFinite)) return null;
+  const p = Math.min(1, Math.max(0, (cur - rise) / (set - rise)));
+  const up = cur >= rise && cur <= set;
+  const W = 300;
+  const H = 70;
+  const x = 10 + p * (W - 20);
+  const y = H - 8 - Math.sin(p * Math.PI) * (H - 20);
+  return (
+    <div className="wx-sun">
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
+        <path d={`M10 ${H - 8} Q ${W / 2} ${-H + 30} ${W - 10} ${H - 8}`} className="wx-sun-path" />
+        <line x1="0" y1={H - 8} x2={W} y2={H - 8} className="wx-sun-horizon" />
+        {up && <circle cx={x} cy={y} r="7" className="wx-sun-dot" />}
+      </svg>
+      <div className="wx-sun-labels">
+        <span>
+          <Icon name="sunrise" size={14} /> {clockLabel(sunrise)}
+        </span>
+        <span className="muted small">{up ? `${Math.round((set - cur) / 60)} h of daylight left` : 'After sunset'}</span>
+        <span>
+          <Icon name="sunset" size={14} /> {clockLabel(sunset)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** Forecast card for the Home grid: now, hourly strip, daily range bars and a daylight arc. */
+export function WeatherCard({ days = 7, hours = 8, showSun = true, fill = false }: { days?: number; hours?: number; showSun?: boolean; fill?: boolean } = {}) {
   const { data, isError } = useWeather();
   if (isError) return null;
   if (!data?.enabled || !data.current) return null;
   const c = data.current;
   const d = describeWeather(c.code, c.isDay);
   const t = today();
+  const todayF = data.daily?.[0];
+  const moon = moonPhase();
+  const nowHour = (c.time ?? '').slice(0, 13);
+  const hourly = (data.hourly ?? []).filter((h) => h.time.slice(0, 13) >= nowHour).slice(0, hours);
+  const daily = (data.daily ?? []).slice(0, days);
+  const lo = Math.min(...daily.map((x) => x.min));
+  const hi = Math.max(...daily.map((x) => x.max));
+  const span = Math.max(1, hi - lo);
+  const speed = data.units === 'fahrenheit' ? 'mph' : 'km/h';
   return (
     <section className={`card wx-card ${fill ? 'widget-fill' : ''}`}>
-      <div className="card-head">
-        <h2>Weather</h2>
-        <span className="muted small">{data.location}</span>
-      </div>
-      <div className="wx-card-now">
-        <span className="wx-card-icon" aria-hidden="true">{d.icon}</span>
-        <div>
-          <div className="wx-card-temp">{deg(c.temp)}</div>
-          <div className="muted small">
-            {d.label} · Feels like {deg(c.feelsLike)}
+      <div className={fill ? 'widget-scroll wx-body' : 'wx-body'}>
+        <div className="wx-top">
+          <span className="wx-card-icon" aria-hidden="true">{d.icon}</span>
+          <div className="wx-top-main">
+            <div className="wx-card-temp">{deg(c.temp)}</div>
+            <div className="wx-cond">{d.label}</div>
+            <div className="muted small">{data.location}</div>
           </div>
-          <div className="muted small">
-            Humidity {c.humidity}% · Wind {Math.round(c.wind)} {data.units === 'fahrenheit' ? 'mph' : 'km/h'}
+          <div className="wx-stats">
+            <span>Feels like {deg(c.feelsLike)}</span>
+            {todayF && (
+              <span>
+                H {deg(todayF.max)} · L {deg(todayF.min)}
+              </span>
+            )}
+            <span>
+              <Icon name="drop" size={13} /> {c.humidity}%
+            </span>
+            <span>
+              <Icon name="wind" size={13} /> {Math.round(c.wind)} {speed}
+            </span>
+            <span title={`${moon.illumination}% lit`}>
+              {moon.icon} {moon.name}
+            </span>
           </div>
         </div>
-      </div>
-      <div className="wx-days">
-        {(data.daily ?? []).slice(0, days).map((day) => {
-          const dd = describeWeather(day.code);
-          return (
-            <div key={day.date} className="wx-day" title={dd.label}>
-              <div className="wx-day-name">{day.date === t ? 'Today' : fmtWeekday(day.date)}</div>
-              <div className="wx-day-icon" aria-hidden="true">{dd.icon}</div>
-              <div className="wx-day-temps">
-                <strong>{deg(day.max)}</strong> <span className="muted">{deg(day.min)}</span>
-              </div>
-              {day.precipChance !== null && day.precipChance >= 20 && <div className="wx-day-rain">💧{day.precipChance}%</div>}
+
+        {hourly.length > 0 && (
+          <>
+            <div className="wx-section">Next {hourly.length} hours</div>
+            <div className="wx-hours">
+              {hourly.map((h, i) => {
+                const hd = describeWeather(h.code, h.isDay);
+                return (
+                  <div key={h.time} className={`wx-hour ${i === 0 ? 'is-now' : ''}`} title={hd.label}>
+                    <div className="wx-hour-t">{hourLabel(h.time, i === 0)}</div>
+                    <div className="wx-hour-i" aria-hidden="true">{hd.icon}</div>
+                    <div className="wx-hour-v">{deg(h.temp)}</div>
+                    {h.precipChance !== null && h.precipChance >= 20 && <div className="wx-rain">{h.precipChance}%</div>}
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
+          </>
+        )}
+
+        <div className="wx-section">{daily.length}-day forecast</div>
+        <div className="wx-daily">
+          {daily.map((day) => {
+            const dd = describeWeather(day.code);
+            const left = ((day.min - lo) / span) * 100;
+            const width = Math.max(4, ((day.max - day.min) / span) * 100);
+            return (
+              <div key={day.date} className="wx-drow" title={dd.label}>
+                <div className="wx-dname">
+                  {day.date === t ? 'Today' : fmtWeekday(day.date)}
+                  {day.precipChance !== null && day.precipChance >= 20 && <span className="wx-rain">{day.precipChance}%</span>}
+                </div>
+                <div className="wx-dicon" aria-hidden="true">{dd.icon}</div>
+                <div className="wx-dmin">{deg(day.min)}</div>
+                <div className="wx-bar">
+                  <span
+                    style={{
+                      left: `${left}%`,
+                      width: `${width}%`,
+                      background: `linear-gradient(90deg, ${tempColor(day.min, data.units)}, ${tempColor(day.max, data.units)})`,
+                    }}
+                  />
+                </div>
+                <div className="wx-dmax">{deg(day.max)}</div>
+              </div>
+            );
+          })}
+        </div>
+
+        {showSun && todayF && <SunArc sunrise={todayF.sunrise} sunset={todayF.sunset} now={c.time} />}
       </div>
     </section>
   );

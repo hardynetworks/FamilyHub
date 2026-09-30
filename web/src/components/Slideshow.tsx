@@ -154,3 +154,21 @@ function SlideshowOverlay({ photos, slideSeconds, onClose }: { photos: PhotoList
     </div>
   );
 }
+
+/** Home background made from the family photos: one photo at a time, dimmed, changing every few minutes. */
+export function PhotoBackdrop({ minutes = 5 }: { minutes?: number }) {
+  const photos = usePhotos();
+  const list = photos.data?.enabled ? photos.data.photos : [];
+  const [idx, setIdx] = useState(() => Math.floor(Math.random() * 1000));
+  useEffect(() => {
+    const t = setInterval(() => setIdx((i) => i + 1), minutes * 60_000);
+    return () => clearInterval(t);
+  }, [minutes]);
+  if (!list.length) return <div className="photo-backdrop" />;
+  const p = list[idx % list.length];
+  return (
+    <div className="photo-backdrop">
+      <div key={p.id} className="photo-backdrop-img" style={{ backgroundImage: `url(/api/photos/${encodeURIComponent(p.id)}/image)` }} />
+    </div>
+  );
+}

@@ -26,7 +26,8 @@ export interface WeatherDto {
   enabled: boolean;
   location?: string;
   units?: 'fahrenheit' | 'celsius';
-  current?: { temp: number; feelsLike: number; code: number; isDay: boolean; wind: number; humidity: number; time: string };
+  current?: { temp: number; feelsLike: number; code: number; isDay: boolean; wind: number; humidity: number; time: string; uv?: number | null };
+  hourly?: { time: string; temp: number; code: number; isDay: boolean; precipChance: number | null }[];
   daily?: { date: string; code: number; max: number; min: number; precipChance: number | null; sunrise: string; sunset: string }[];
   updatedAt?: string;
 }
@@ -44,7 +45,9 @@ export async function getWeather(): Promise<WeatherDto> {
     latitude: String(cfg.lat),
     longitude: String(cfg.lon),
     current: 'temperature_2m,apparent_temperature,weather_code,is_day,wind_speed_10m,relative_humidity_2m',
-    daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset',
+    daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,uv_index_max',
+    hourly: 'temperature_2m,weather_code,is_day,precipitation_probability',
+    forecast_hours: '48',
     temperature_unit: cfg.units,
     wind_speed_unit: cfg.units === 'fahrenheit' ? 'mph' : 'kmh',
     timezone: 'auto',
@@ -62,6 +65,7 @@ export async function getWeather(): Promise<WeatherDto> {
   }
   const c = j.current ?? {};
   const d = j.daily ?? {};
+  const h = j.hourly ?? {};
   const data: WeatherDto = {
     enabled: true,
     location: cfg.name,
@@ -74,7 +78,15 @@ export async function getWeather(): Promise<WeatherDto> {
       wind: c.wind_speed_10m,
       humidity: c.relative_humidity_2m,
       time: c.time,
+      uv: d.uv_index_max?.[0] ?? null,
     },
+    hourly: (h.time ?? []).map((time: string, i: number) => ({
+      time,
+      temp: h.temperature_2m?.[i],
+      code: h.weather_code?.[i],
+      isDay: h.is_day?.[i] === 1,
+      precipChance: h.precipitation_probability?.[i] ?? null,
+    })),
     daily: (d.time ?? []).map((date: string, i: number) => ({
       date,
       code: d.weather_code?.[i],

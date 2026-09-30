@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { CSSProperties, PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useCameras } from '../components/Cameras';
 import { WidgetView, useLists } from '../components/HomeWidgets';
-import { IdleSlideshow, usePhotos } from '../components/Slideshow';
+import { IdleSlideshow, PhotoBackdrop, usePhotos } from '../components/Slideshow';
 import { Empty, Field, Icon, Modal } from '../components/ui';
 import { useWeather } from '../components/Weather';
 import { api } from '../lib/api';
@@ -215,7 +215,8 @@ export function HomePage() {
   };
 
   return (
-    <div className={`page page-home home-bg-${theme.background ?? 'plain'} ${editing ? 'is-editing' : ''}`}>
+    <div className={`page page-home home-bg-${theme.background ?? 'aurora'} ${editing ? 'is-editing' : ''}`}>
+      {theme.background === 'photo' && <PhotoBackdrop />}
       {editing && (
         <div className="editor-bar">
           <div className="editor-bar-title">
@@ -381,6 +382,8 @@ function AddWidgetModal({ layout, onChange, onClose }: { layout: HomeLayout; onC
 }
 
 const BACKGROUNDS: { value: NonNullable<Theme['background']>; label: string }[] = [
+  { value: 'aurora', label: 'Aurora' },
+  { value: 'photo', label: 'Family photos' },
   { value: 'plain', label: 'Plain' },
   { value: 'warm', label: 'Warm' },
   { value: 'sky', label: 'Sky' },
@@ -435,7 +438,7 @@ function ThemeModal({ theme, onChange, onClose }: { theme: Theme; onChange: (t: 
         <Field label="Background">
           <div className="bg-choices">
             {BACKGROUNDS.map((b) => (
-              <button type="button" key={b.value} className={`bg-choice home-bg-${b.value} ${(theme.background ?? 'plain') === b.value ? 'on' : ''}`} onClick={() => onChange({ background: b.value })}>
+              <button type="button" key={b.value} className={`bg-choice home-bg-${b.value} ${(theme.background ?? 'aurora') === b.value ? 'on' : ''}`} onClick={() => onChange({ background: b.value })}>
                 {b.label}
               </button>
             ))}

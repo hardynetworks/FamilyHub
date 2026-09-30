@@ -110,6 +110,15 @@ const paths: Record<string, string> = {
   down: 'm6 9 6 6 6-6',
   camera: 'M23 7l-7 5 7 5V7zM3 5h11a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z',
   image: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM21 15l-5-5L5 21',
+  sidebar: 'M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM9 4v16',
+  menu: 'M3 6h18M3 12h18M3 18h18',
+  chevronsLeft: 'm11 17-5-5 5-5M18 17l-5-5 5-5',
+  chevronsRight: 'm13 17 5-5-5-5M6 17l5-5-5-5',
+  drop: 'M12 2.7s-6 6.4-6 11.3a6 6 0 0 0 12 0c0-4.9-6-11.3-6-11.3z',
+  wind: 'M3 8h11a3 3 0 1 0-3-3M3 12h16a3 3 0 1 1-3 3M3 16h7',
+  sunrise: 'M12 2v6M5.2 10.2l1.4 1.4M2 18h2M20 18h2M17.4 11.6l1.4-1.4M22 22H2M16 18a4 4 0 0 0-8 0M8 6l4-4 4 4',
+  sunset: 'M12 9V3M5.2 10.2l1.4 1.4M2 18h2M20 18h2M17.4 11.6l1.4-1.4M22 22H2M16 18a4 4 0 0 0-8 0M16 5l-4 4-4-4',
+  thermo: 'M14 14.8V4a2 2 0 0 0-4 0v10.8a4 4 0 1 0 4 0z',
   google: 'M21 12.2c0-.7-.1-1.4-.2-2H12v3.9h5a4.3 4.3 0 0 1-1.9 2.8v2.3h3A9 9 0 0 0 21 12.2zM12 21a8.9 8.9 0 0 0 6.1-2.3l-3-2.3a5.5 5.5 0 0 1-8.2-2.9H3.8v2.4A9 9 0 0 0 12 21zM6.9 13.5a5.4 5.4 0 0 1 0-3.4V7.7H3.8a9 9 0 0 0 0 8.1zM12 6.6a4.9 4.9 0 0 1 3.5 1.4l2.6-2.6A8.8 8.8 0 0 0 12 3a9 9 0 0 0-8.2 4.7l3.1 2.4A5.4 5.4 0 0 1 12 6.6z',
 };
 
@@ -159,3 +168,10 @@ export function CopyField({ value }: { value: string }) {
 
 export const EMOJI_CHOICES = ['🏠', '👩', '👨', '👧', '👦', '👶', '👵', '👴', '🐶', '🐱', '⭐', '🌈', '⚽', '🎨', '🎮', '🎸', '📚', '🦄', '🚀', '🌻'];
 export const COLOR_CHOICES = ['#5b7cfa', '#f06a6a', '#2bb673', '#f5a623', '#a65bfa', '#1fb5c9', '#ec5fa8', '#8a6d3b', '#607080'];
+
+const PRIORITY_LABEL: Record<string, string> = { high: 'High', medium: 'Medium', low: 'Low' };
+/** Small coloured badge for a to-do's priority (nothing for "none"). */
+export function PriorityBadge({ priority }: { priority?: string | null }) {
+  if (!priority || priority === 'none') return null;
+  return <span className={`prio prio-${priority}`}>{PRIORITY_LABEL[priority]}</span>;
+}

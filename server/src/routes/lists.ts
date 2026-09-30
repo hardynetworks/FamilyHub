@@ -12,6 +12,7 @@ const itemDto = (r: any) => ({
   checked: r.checked,
   assigneeId: r.assignee_id,
   dueDate: r.due_date,
+  priority: r.priority ?? 'none',
   sort: r.sort,
   createdAt: r.created_at,
   checkedAt: r.checked_at,
@@ -104,6 +105,7 @@ itemsRouter.patch('/:id', async (req, res) => {
       assigneeId: z.string().uuid().nullish(),
       dueDate: isoDate.nullish(),
       sort: z.number().optional(),
+      priority: z.enum(['none', 'low', 'medium', 'high']).optional(),
     }),
     req.body,
   );
@@ -114,9 +116,10 @@ itemsRouter.patch('/:id', async (req, res) => {
        checked_at = case when $3 is null then checked_at when $3 then now() else null end,
        assignee_id = case when $4::boolean then $5::uuid else assignee_id end,
        due_date = case when $6::boolean then $7::date else due_date end,
-       sort = coalesce($8, sort)
+       sort = coalesce($8, sort),
+       priority = coalesce($9, priority)
      where id = $1 returning *`,
-    [req.params.id, b.text ?? null, b.checked ?? null, b.assigneeId !== undefined, b.assigneeId ?? null, b.dueDate !== undefined, b.dueDate ?? null, b.sort ?? null],
+    [req.params.id, b.text ?? null, b.checked ?? null, b.assigneeId !== undefined, b.assigneeId ?? null, b.dueDate !== undefined, b.dueDate ?? null, b.sort ?? null, b.priority ?? null],
   );
   if (!r) throw new HttpError(404, 'Item not found');
   res.json(itemDto(r));
@@ -131,7 +134,8 @@ itemsRouter.delete('/:id', async (req, res) => {
 itemsRouter.get('/open-todos', async (_req, res) => {
   const rows = await q(
     `select i.*, l.name as list_name from list_items i join lists l on l.id = i.list_id
-     where l.kind = 'todo' and not i.checked order by i.due_date nulls last, i.sort limit 50`,
+     where l.kind = 'todo' and not i.checked
+     order by case i.priority when 'high' then 0 when 'medium' then 1 when 'low' then 2 else 3 end, i.due_date nulls last, i.sort limit 50`,
   );
   res.json(rows.map((r: any) => ({ ...itemDto(r), listName: r.list_name })));
 });

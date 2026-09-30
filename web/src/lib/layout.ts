@@ -20,7 +20,7 @@ export interface Theme {
   accent?: string;
   mode?: 'auto' | 'light' | 'dark';
   scale?: 'sm' | 'md' | 'lg' | 'xl';
-  background?: 'plain' | 'warm' | 'sky' | 'forest' | 'dusk';
+  background?: 'plain' | 'aurora' | 'photo' | 'warm' | 'sky' | 'forest' | 'dusk';
   density?: 'cozy' | 'compact';
 }
 
@@ -83,19 +83,30 @@ export const WIDGETS: WidgetSpec[] = [
     type: 'weather',
     label: 'Weather',
     icon: 'sun',
-    description: 'Current conditions and forecast',
-    w: 4,
-    h: 4,
+    description: 'Now, the next few hours, the week ahead and sunrise/sunset',
+    w: 5,
+    h: 10,
     minW: 2,
-    minH: 2,
+    minH: 3,
     options: [
       {
         key: 'days',
         label: 'Forecast days',
         kind: 'select',
-        def: '6',
+        def: '7',
         options: ['3', '5', '6', '7', '10', '14'].map((d) => ({ value: d, label: `${d} days` })),
       },
+      {
+        key: 'hours',
+        label: 'Hourly forecast',
+        kind: 'select',
+        def: '8',
+        options: [
+          { value: '0', label: 'Hide' },
+          ...['6', '8', '12'].map((d) => ({ value: d, label: `Next ${d} hours` })),
+        ],
+      },
+      { key: 'sun', label: 'Show sunrise & sunset', kind: 'bool', def: true },
     ],
   },
   { type: 'cameras', label: 'Cameras', icon: 'camera', description: 'UniFi Protect cameras', w: 12, h: 5, minW: 3, minH: 3 },
@@ -179,16 +190,17 @@ export function optionValue(w: Widget, key: string) {
 
 export const BUILTIN_LAYOUT: HomeLayout = {
   version: 1,
-  theme: { mode: 'auto', scale: 'md', background: 'plain', density: 'cozy' },
+  theme: { mode: 'auto', scale: 'md', background: 'aurora', density: 'cozy' },
   widgets: [
     { id: 'header', type: 'header', w: 12, h: 2 },
+    { id: 'weather', type: 'weather', w: 5, h: 10 },
+    { id: 'clock', type: 'clock', w: 7, h: 3 },
+    { id: 'todos', type: 'todos', w: 7, h: 4 },
+    { id: 'chores', type: 'chores', w: 7, h: 4 },
     { id: 'cameras', type: 'cameras', w: 12, h: 5 },
-    { id: 'agenda', type: 'agenda', w: 4, h: 9 },
-    { id: 'weather', type: 'weather', w: 4, h: 4 },
-    { id: 'chores', type: 'chores', w: 4, h: 5 },
-    { id: 'meals', type: 'meals', w: 4, h: 3 },
-    { id: 'shopping', type: 'shopping', w: 4, h: 5 },
-    { id: 'todos', type: 'todos', w: 4, h: 4 },
+    { id: 'agenda', type: 'agenda', w: 4, h: 7 },
+    { id: 'shopping', type: 'shopping', w: 4, h: 7 },
+    { id: 'meals', type: 'meals', w: 4, h: 7 },
   ],
 };
 
@@ -211,7 +223,7 @@ export function resolveLayout(r: LayoutResponse | undefined): HomeLayout {
   return r?.layout ?? BUILTIN_LAYOUT;
 }
 
-export const ACCENTS = ['#e8664a', '#5b7cfa', '#2bb673', '#a65bfa', '#ec5fa8', '#1fb5c9', '#f5a623', '#607080'];
+export const ACCENTS = ['#6366f1', '#0ea5e9', '#14b8a6', '#22c55e', '#f59e0b', '#f97316', '#ec4899', '#8b5cf6', '#e8664a', '#64748b'];
 
 /** Apply a theme to the whole app (accent + light/dark). Home-only bits (background, text size) are applied by the Home page. */
 export function applyTheme(theme: Theme | undefined) {

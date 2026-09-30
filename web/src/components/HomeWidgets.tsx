@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { CSSProperties, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CalEvent, Chore, List, ListItem, Meal, api, qs } from '../lib/api';
 import { addDays, addDaysYmd, fmt, fmtDayLong, fmtTime, relativeDayLabel, startOfDay, today, ymd } from '../lib/dates';
@@ -8,7 +8,7 @@ import { Widget, optionValue } from '../lib/layout';
 import { eventColor } from '../pages/CalendarPage';
 import { CamerasCard } from './Cameras';
 import { EventModal } from './EventModal';
-import { Avatar, Empty, Icon } from './ui';
+import { Avatar, Empty, Icon, PriorityBadge } from './ui';
 import { WeatherCard, WeatherNow } from './Weather';
 
 export function useClock(intervalMs = 15_000) {
@@ -34,7 +34,7 @@ export function WidgetView({ widget, onPhotos, canShowPhotos }: { widget: Widget
     case 'clock':
       return <ClockWidget widget={widget} />;
     case 'weather':
-      return <WeatherCard days={Number(optionValue(widget, 'days'))} fill />;
+      return <WeatherCard days={Number(optionValue(widget, 'days'))} hours={Number(optionValue(widget, 'hours'))} showSun={optionValue(widget, 'sun') !== false} fill />;
     case 'cameras':
       return <CamerasCard fill />;
     case 'agenda':
@@ -152,41 +152,50 @@ function AgendaWidget({ widget }: { widget: Widget }) {
 }
 
 function ChoresWidget({ widget }: { widget: Widget }) {
-  const { members } = useMembers();
+  const { byId } = useMembers();
   const t = today();
   const hideDone = optionValue(widget, 'hideDone') === true;
   const chores = useQuery({ queryKey: ['chores', 'day', t], queryFn: () => api<{ chores: Chore[] }>(`/chores/day${qs({ date: t })}`) });
   const toggle = useAction((c: Chore) => api(`/chores/${c.id}/toggle`, 'POST', { date: t, done: !c.done }), [['chores']]);
-  const list = (chores.data?.chores ?? []).filter((c) => !hideDone || !c.done);
-  const groups = [...members.map((m) => ({ member: m, items: list.filter((c) => c.assigneeId === m.id) })), { member: null, items: list.filter((c) => !c.assigneeId) }].filter(
-    (g) => g.items.length,
-  );
+  const all = chores.data?.chores ?? [];
+  const list = all.filter((c) => !hideDone || !c.done).sort((a, b) => Number(!!a.done) - Number(!!b.done));
+  const doneCount = all.filter((c) => c.done).length;
   return (
     <section className="card widget-fill">
       <div className="card-head">
-        <h2>Today's chores</h2>
-        <Link to="/chores" className="link-btn">
-          All chores
+        <h2>
+          <Icon name="star" size={18} /> Chores
+          {all.length > 0 && (
+            <span className="muted small head-count">
+              {doneCount}/{all.length} done
+            </span>
+          )}
+        </h2>
+        <Link to="/chores" className="icon-btn" title="All chores" aria-label="All chores">
+          <Icon name="plus" size={18} />
         </Link>
       </div>
       <div className="widget-scroll">
         {list.length === 0 && !chores.isLoading && <Empty icon="🎉" title={hideDone ? 'All done for today' : 'No chores today'} />}
-        {groups.map((g) => (
-          <div key={g.member?.id ?? 'none'} className="chore-group">
-            <div className="chore-group-head">
-              <Avatar member={g.member} size={24} /> {g.member?.name ?? 'Anyone'}
-            </div>
-            {g.items.map((c) => (
-              <label key={c.id} className={`check-row ${c.done ? 'is-done' : ''}`}>
-                <input type="checkbox" checked={!!c.done} onChange={() => toggle.mutate(c)} />
-                <span>
-                  {c.emoji} {c.title}
+        {list.map((c) => {
+          const who = c.assigneeId ? byId.get(c.assigneeId) : null;
+          return (
+            <button key={c.id} className={`task-row ${c.done ? 'is-done' : ''}`} onClick={() => toggle.mutate(c)}>
+              <span className={`task-check round ${c.done ? 'on' : ''}`} style={who ? ({ '--c': who.color } as CSSProperties) : undefined}>
+                {c.done && <Icon name="check" size={14} />}
+              </span>
+              <span className="task-body">
+                <span className="task-title">
+                  {c.emoji} {c.title} <span className="pts">+{c.points}</span>
                 </span>
-                <span className="pts">+{c.points}</span>
-              </label>
-            ))}
-          </div>
-        ))}
+                <span className="task-meta">
+                  <Avatar member={who} size={16} /> {who?.name ?? 'Anyone'} · {c.frequency === 'daily' ? 'Daily' : c.frequency === 'weekly' ? 'Weekly' : 'Once'}
+                  {!c.done && <span className="due-today">Due today</span>}
+                </span>
+              </span>
+            </button>
+          );
+        })}
       </div>
     </section>
   );
@@ -224,31 +233,74 @@ function ShoppingWidget({ widget }: { widget: Widget }) {
   const lists = useLists();
   const wanted = String(optionValue(widget, 'listId') || '');
   const max = Number(optionValue(widget, 'max')) || 8;
-  const list = (wanted && lists.data?.find((l) => l.id === wanted)) || lists.data?.find((l) => l.kind === 'shopping');
+  const [picked, setPicked] = useState('');
+  const [text, setText] = useState('');
+  const shopping = (lists.data ?? []).filter((l) => l.kind === 'shopping');
+  const list = (picked && lists.data?.find((l) => l.id === picked)) || (wanted && lists.data?.find((l) => l.id === wanted)) || shopping[0];
   const items = useQuery({ queryKey: ['items', list?.id], queryFn: () => api<ListItem[]>(`/lists/${list!.id}/items`), enabled: !!list });
   const toggle = useAction((i: ListItem) => api(`/items/${i.id}`, 'PATCH', { checked: !i.checked }), [['items'], ['lists']]);
-  const open = (items.data ?? []).filter((i) => !i.checked);
+  const add = useAction((v: string) => api(`/lists/${list!.id}/items`, 'POST', { text: v }), [['items'], ['lists']], () => setText(''));
+  const all = items.data ?? [];
+  const open = all.filter((i) => !i.checked);
+  const done = all.filter((i) => i.checked);
+  const shown = [...open.slice(0, max), ...done.slice(0, Math.max(0, max - open.length))];
   return (
     <section className="card widget-fill">
       <div className="card-head">
         <h2>
-          <Icon name="cart" size={18} /> {list?.name ?? 'Shopping'} <span className="badge">{open.length}</span>
+          <Icon name="cart" size={18} /> Shopping
         </h2>
-        {list && (
-          <Link to={`/lists/${list.id}`} className="link-btn">
-            Open list
-          </Link>
+        {shopping.length > 1 ? (
+          <select className="list-pick" value={list?.id ?? ''} onChange={(e) => setPicked(e.target.value)} aria-label="Shopping list">
+            {shopping.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          list && (
+            <Link to={`/lists/${list.id}`} className="link-btn">
+              {list.name}
+            </Link>
+          )
         )}
       </div>
+      {all.length > 0 && (
+        <div className="shop-progress">
+          <div className="progress">
+            <div style={{ width: `${(done.length / all.length) * 100}%` }} />
+          </div>
+          <span className="muted small">
+            {done.length} of {all.length} checked
+          </span>
+        </div>
+      )}
+      {list && (
+        <form
+          className="quick-add"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (text.trim()) add.mutate(text.trim());
+          }}
+        >
+          <input className="input" value={text} onChange={(e) => setText(e.target.value)} placeholder={`Add to ${list.name}…`} aria-label={`Add to ${list.name}`} />
+          <button className="icon-btn" disabled={!text.trim()} aria-label="Add">
+            <Icon name="plus" size={18} />
+          </button>
+        </form>
+      )}
       <div className="widget-scroll">
-        {open.length === 0 && <Empty icon="🛒" title="The list is empty" />}
-        {open.slice(0, max).map((i) => (
-          <label key={i.id} className="check-row">
-            <input type="checkbox" checked={i.checked} onChange={() => toggle.mutate(i)} />
-            <span>{i.text}</span>
-          </label>
+        {all.length === 0 && !items.isLoading && <Empty icon="🛒" title="The list is empty" />}
+        {shown.map((i) => (
+          <button key={i.id} className={`task-row ${i.checked ? 'is-done' : ''}`} onClick={() => toggle.mutate(i)}>
+            <span className={`task-check ${i.checked ? 'on' : ''}`}>{i.checked && <Icon name="check" size={14} />}</span>
+            <span className="task-body">
+              <span className="task-title">{i.text}</span>
+            </span>
+          </button>
         ))}
-        {open.length > max && <div className="muted small">+ {open.length - max} more</div>}
+        {open.length > max && <div className="muted small more-line">+ {open.length - max} more</div>}
       </div>
     </section>
   );
@@ -262,21 +314,38 @@ function TodosWidget() {
   return (
     <section className="card widget-fill">
       <div className="card-head">
-        <h2>To-dos</h2>
-        <Link to="/lists" className="link-btn">
-          Lists
+        <h2>
+          <Icon name="check" size={18} /> Tasks
+        </h2>
+        <Link to="/lists" className="icon-btn" title="Lists" aria-label="Open lists">
+          <Icon name="plus" size={18} />
         </Link>
       </div>
       <div className="widget-scroll">
         {(todos.data ?? []).length === 0 && !todos.isLoading && <Empty icon="✨" title="Nothing to do" />}
-        {(todos.data ?? []).map((i) => (
-          <label key={i.id} className="check-row">
-            <input type="checkbox" checked={i.checked} onChange={() => toggle.mutate(i)} />
-            <span>{i.text}</span>
-            {i.dueDate && <span className={`due ${i.dueDate < t ? 'overdue' : ''}`}>{relativeDayLabel(i.dueDate)}</span>}
-            {i.assigneeId && <Avatar member={byId.get(i.assigneeId)} size={20} />}
-          </label>
-        ))}
+        {(todos.data ?? []).map((i) => {
+          const who = i.assigneeId ? byId.get(i.assigneeId) : null;
+          return (
+            <button key={i.id} className="task-row" onClick={() => toggle.mutate(i)}>
+              <span className={`task-check prio-box-${i.priority ?? 'none'}`} />
+              <span className="task-body">
+                <span className="task-title">
+                  {i.text} <PriorityBadge priority={i.priority} />
+                </span>
+                {(who || i.dueDate) && (
+                  <span className="task-meta">
+                    {who && (
+                      <>
+                        <Avatar member={who} size={16} /> {who.name}
+                      </>
+                    )}
+                    {i.dueDate && <span className={i.dueDate < t ? 'overdue-text' : i.dueDate === t ? 'due-today' : ''}>{relativeDayLabel(i.dueDate)}</span>}
+                  </span>
+                )}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </section>
   );

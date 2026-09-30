@@ -180,6 +180,10 @@ create table devices (
 );
 `,
   },
+  {
+    id: '005_item_priority',
+    sql: `alter table list_items add column priority text not null default 'none' check (priority in ('none','low','medium','high'));`,
+  },
 ];
 
 export async function migrate(): Promise<void> {

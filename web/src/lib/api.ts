@@ -60,7 +60,8 @@ export interface WeatherData {
   enabled: boolean;
   location?: string;
   units?: 'fahrenheit' | 'celsius';
-  current?: { temp: number; feelsLike: number; code: number; isDay: boolean; wind: number; humidity: number; time: string };
+  current?: { temp: number; feelsLike: number; code: number; isDay: boolean; wind: number; humidity: number; time: string; uv?: number | null };
+  hourly?: { time: string; temp: number; code: number; isDay: boolean; precipChance: number | null }[];
   daily?: { date: string; code: number; max: number; min: number; precipChance: number | null; sunrise: string; sunset: string }[];
   updatedAt?: string;
 }
@@ -152,6 +153,8 @@ export interface List {
   totalCount: number;
 }
 
+export type Priority = 'none' | 'low' | 'medium' | 'high';
+
 export interface ListItem {
   id: string;
   listId: string;
@@ -160,6 +163,7 @@ export interface ListItem {
   assigneeId: string | null;
   dueDate: string | null;
   sort: number;
+  priority?: Priority;
   listName?: string;
 }
 

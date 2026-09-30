@@ -278,6 +278,14 @@ Tap **Customize** (bottom-right of Home) to edit the page in place:
 - **Add widget:** greeting and clock, big clock, weather, cameras, coming up, today's chores, today's meals, shopping list (more than one allowed), to-dos and family notes.
 - **Widget options (⚙):** for example, how many days of events to show, which shopping list, or a note's text and colour.
 - **Look & feel:** accent colour (for the whole app), light/dark/automatic, text size (great on a wall screen), background and spacing.
+- **Backgrounds:**
+  - **Aurora** (the default): soft colour glows behind glass cards.
+  - **Family photos:** your slideshow photos, dimmed, changing every few minutes.
+  - Plain, Warm, Sky, Forest and Dusk.
+- **Weather widget:** current conditions, the next 6–12 hours, a 3–14 day forecast with temperature-range bars, and sunrise/sunset with the moon phase. Each part can be turned on or off.
+- **Tasks:** to-dos show their priority (High / Medium / Low), who they're for and when they're due. Set the priority by tapping an item in Lists.
+
+**Hiding the menu (desktop):** the « button at the top of the sidebar shrinks it to icons. **Hide menu** at the bottom removes it completely, and a small button in the top-left corner brings it back. **Ctrl+\\** toggles it. Each device remembers its own choice.
 
 Each person's Home page is their own. A head of household can press **Save for family** to make a layout the default for everyone who hasn't customized theirs. Anyone can press **Reset** to go back to the family layout.
 
@@ -505,14 +513,25 @@ web/src
   lib/            API client, hooks, Home layout model
 ```
 
-### Roadmap ideas
+### Roadmap
 
-- **FamilyHub OS all-in-one:** an option to run the FamilyHub server on the kiosk device itself (see the [FamilyHub OS to-do list](os/README.md#to-do)).
-- Night dimming for kiosk screens.
+Planned next, in this order:
+
+1. **Chore rewards with parent approval.**
+   - Kids tap "done", and a parent gets an email and/or a phone push notification with Approve / Deny buttons. The push goes through a self-hosted [ntfy](https://ntfy.sh) server or [Pushover](https://pushover.net).
+   - Approved chores add points or money to the child's reward balance, and kids can redeem rewards the parents set up.
+   - Texts will use email-to-text through your own email (SMTP) server.
+2. **More calendars.**
+   - **Apple iCloud Calendar**, two-way, using an app-specific password.
+   - **Subscribing to any .ics link** (school, sports, holidays), read-only.
+3. **FamilyHub OS all-in-one** and the other items on the [FamilyHub OS to-do list](os/README.md#to-do).
+
+Other ideas:
+
 - A family message board.
-- Push notifications.
 - Instant Google sync using Google's push notifications.
-- CalDAV / iCloud calendars.
+- **Samsung Calendar:** Samsung has no public calendar API. Its calendar already shows Google (and Outlook) calendars, so events you sync to Google appear there.
+- **Acorns Early:** Acorns has no public API for sending money, so FamilyHub can't add money to a child's Acorns Early account automatically. The reward balance will show what each child has earned, so a parent can make the transfer in the Acorns app.
 
 ## License
 

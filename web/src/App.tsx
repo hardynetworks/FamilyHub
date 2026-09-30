@@ -64,30 +64,49 @@ function Shell({ appName }: { appName: string }) {
   const me = data!.user!;
   const layout = useHomeLayout();
   useApplyTheme(layout.isSuccess ? resolveLayout(layout.data).theme : undefined);
+  const [sidebar, setSidebar] = useSidebarState();
   const logout = async () => {
     await api('/auth/logout', 'POST');
     qc.clear();
     location.href = '/';
   };
   return (
-    <div className="shell">
-      <aside className="sidebar">
+    <div className={`shell sidebar-${sidebar}`}>
+      {sidebar === 'hidden' && (
+        <button className="sidebar-reveal" onClick={() => setSidebar('full')} title="Show the menu (Ctrl+\)" aria-label="Show the menu">
+          <Icon name="sidebar" size={20} />
+        </button>
+      )}
+      <aside className="sidebar" aria-hidden={sidebar === 'hidden'}>
         <div className="brand">
           <img src="/icon.svg" alt="" width={32} height={32} />
-          <span>{appName}</span>
+          <span className="brand-name">{appName}</span>
+          <button
+            className="icon-btn sidebar-toggle"
+            onClick={() => setSidebar(sidebar === 'rail' ? 'full' : 'rail')}
+            title={sidebar === 'rail' ? 'Expand the menu' : 'Collapse the menu'}
+            aria-label={sidebar === 'rail' ? 'Expand the menu' : 'Collapse the menu'}
+          >
+            <Icon name={sidebar === 'rail' ? 'chevronsRight' : 'chevronsLeft'} size={18} />
+          </button>
         </div>
         <nav className="nav">
           {NAV.map((n) => (
-            <NavLink key={n.to} to={n.to} end={n.to === '/'} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+            <NavLink key={n.to} to={n.to} end={n.to === '/'} title={n.label} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
               <Icon name={n.icon} /> <span>{n.label}</span>
             </NavLink>
           ))}
         </nav>
         <div className="sidebar-foot">
-          <Avatar member={me} size={32} />
-          <div className="sidebar-user">
-            <div className="sidebar-name">{me.name}</div>
-            <button className="link-btn" onClick={logout}>Sign out</button>
+          <button className="nav-link sidebar-hide" onClick={() => setSidebar('hidden')} title="Hide the menu (Ctrl+\)">
+            <Icon name="sidebar" /> <span>Hide menu</span>
+          </button>
+          <div className="sidebar-me">
+            <Avatar member={me} size={32} />
+            <div className="sidebar-user">
+              <div className="sidebar-name">{me.name}</div>
+              <button className="link-btn" onClick={logout}>Sign out</button>
+            </div>
           </div>
         </div>
       </aside>
@@ -114,4 +133,44 @@ function Shell({ appName }: { appName: string }) {
       </nav>
     </div>
   );
+}
+
+type SidebarState = 'full' | 'rail' | 'hidden';
+/** Desktop menu: full, icons only, or hidden. Remembered per device; Ctrl+\ toggles it. */
+function useSidebarState(): [SidebarState, (s: SidebarState) => void] {
+  const [state, setState] = useState<SidebarState>(() => {
+    try {
+      const v = localStorage.getItem('fh.sidebar');
+      return v === 'rail' || v === 'hidden' ? v : 'full';
+    } catch {
+      return 'full';
+    }
+  });
+  const set = useCallback((s: SidebarState) => {
+    setState(s);
+    try {
+      localStorage.setItem('fh.sidebar', s);
+    } catch {
+      /* private mode */
+    }
+  }, []);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === '\\') {
+        e.preventDefault();
+        setState((cur) => {
+          const next = cur === 'hidden' ? 'full' : 'hidden';
+          try {
+            localStorage.setItem('fh.sidebar', next);
+          } catch {
+            /* ignore */
+          }
+          return next;
+        });
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  return [state, set];
 }
