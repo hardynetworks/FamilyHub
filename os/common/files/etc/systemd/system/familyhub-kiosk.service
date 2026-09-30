@@ -1,7 +1,7 @@
 [Unit]
 Description=FamilyHub kiosk screen
-After=systemd-user-sessions.service plymouth-quit-wait.service familyhub-boot.service familyhub-firstboot.service NetworkManager.service
-Wants=NetworkManager.service
+After=systemd-user-sessions.service plymouth-quit-wait.service familyhub-boot.service familyhub-setupd.service NetworkManager.service
+Wants=NetworkManager.service familyhub-setupd.service
 Conflicts=getty@tty1.service
 
 [Service]

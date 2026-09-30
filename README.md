@@ -389,9 +389,12 @@ Turn a tablet or a Raspberry Pi with a screen into a family dashboard that stays
   - unlock every page for 5 minutes, including **Customize** on Home
   - go full screen
   - reload
+  - switch the on-screen keyboard between Auto, On and Off
+  - open **Screen settings** (Wi-Fi, address, rotation) on FamilyHub OS
   - sign the screen out
 
   If no PIN is set, anyone can open the menu, so set one.
+- **On-screen keyboard:** touch screens with no keyboard get a built-in keyboard that slides up when you tap a text box, with a number pad for number fields. It's on automatically for FamilyHub OS and for kiosk screens on Linux touch screens. Phones and tablets keep their own keyboard. Change it per device in the kiosk menu or in **Settings → Screen & alerts → This device**.
 
 Settings → Kiosk screens also shows each screen's status (online, last seen, device type).
 
@@ -432,8 +435,8 @@ Install the APK from the **Releases** page (or, once published, from Google Play
 
 Don't want to set a screen up by hand? **[FamilyHub OS](os/README.md)** boots straight into a FamilyHub kiosk:
 
-- **Raspberry Pi:** flash `FamilyHubOS-RaspberryPi-arm64.img.xz` to a microSD card. To set it up without a keyboard, fill in `familyhub.txt` on the card first: FamilyHub address, Wi-Fi and pairing code.
-- **x86 PCs** (mini PCs, NUCs, old laptops): flash `FamilyHubOS-x86_64.iso` to a USB stick and boot it. It installs itself (erasing the disk).
+- **Raspberry Pi:** flash `FamilyHubOS-RaspberryPi-arm64.img.xz` to a microSD card and boot it. Set it up **on the screen by touch**: rotation, Wi-Fi, FamilyHub address and pairing code, with an on-screen keyboard. (Or fill in `familyhub.txt` on the card from your PC first.)
+- **x86 PCs** (mini PCs, NUCs, old laptops): flash `FamilyHubOS-x86_64.iso` to a USB stick and boot it. It installs itself (erasing the disk), then shows the same on-screen setup.
 - **Windows PCs:** run `Install.cmd` from `FamilyHub-Kiosk-Windows.zip`. FamilyHub then opens full screen in Edge at every sign-in.
 
 Downloads are on the **Releases** page. See [os/README.md](os/README.md) for step-by-step instructions.

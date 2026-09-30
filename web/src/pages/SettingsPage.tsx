@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { AppSettings } from '../components/AppSettings';
 import { KioskAdmin } from '../components/KioskAdmin';
 import { useCameras } from '../components/Cameras';
+import { KeyboardSetting } from '../components/Kiosk';
 import { Avatar, COLOR_CHOICES, EMOJI_CHOICES, Field, Icon, Modal } from '../components/ui';
 import { GoogleStatus, Member, api } from '../lib/api';
 import { useAction, useAuthStatus, useMe, useMembers, useToast } from '../lib/hooks';
@@ -153,6 +154,11 @@ export function SettingsPage({ onLogout }: { onLogout: () => void }) {
                 <p className="muted small">
                   To rearrange your Home page, change its colours or text size, open <strong>Home</strong> and tap <strong>Customize</strong>.
                 </p>
+              </section>
+              <section className="card">
+                <h2>This device</h2>
+                <p className="muted small">For touch screens without a keyboard. Auto turns it on for FamilyHub OS and Linux kiosk screens; phones and tablets use their own keyboard.</p>
+                <KeyboardSetting kiosk={false} />
               </section>
               <SlideshowPrefsCard />
               <CameraPrefsCard />

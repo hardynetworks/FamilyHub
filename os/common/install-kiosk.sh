@@ -11,6 +11,7 @@ echo "==> Installing packages"
 apt-get update
 apt-get install -y --no-install-recommends \
   cage wlr-randr whiptail curl ca-certificates network-manager unattended-upgrades \
+  python3 rfkill iw \
   fonts-dejavu-core fonts-noto-color-emoji dbus-user-session \
   libgl1-mesa-dri libegl-mesa0 libgbm1
 apt-get install -y --no-install-recommends chromium || apt-get install -y --no-install-recommends chromium-browser
@@ -26,12 +27,15 @@ done
 
 echo "==> FamilyHub files"
 cp -r "$HERE/files/." /
-chmod 755 /usr/local/bin/familyhub-browser /usr/local/bin/familyhub-setup /usr/local/bin/familyhub-boot
+chmod 755 /usr/local/bin/familyhub-browser /usr/local/bin/familyhub-setup /usr/local/bin/familyhub-boot \
+  /usr/local/bin/familyhub-setupd /usr/local/bin/familyhub-touch-rotate
 [ -f /etc/familyhub/kiosk.conf ] || cp /etc/familyhub/kiosk.conf.default /etc/familyhub/kiosk.conf
 echo "$PLATFORM" > /etc/familyhub/platform
 
 echo "==> Services"
-systemctl enable familyhub-boot.service familyhub-firstboot.service familyhub-kiosk.service NetworkManager.service
+# The screen sets itself up by touch (familyhub-setupd); the old keyboard first-boot menu stays off.
+systemctl enable familyhub-boot.service familyhub-setupd.service familyhub-kiosk.service NetworkManager.service
+systemctl disable familyhub-firstboot.service 2>/dev/null || true
 systemctl set-default graphical.target
 
 # Let NetworkManager manage every network connection (the Debian installer sets up ifupdown).

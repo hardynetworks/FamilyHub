@@ -12,6 +12,8 @@ import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'reac
 import { AuthStatus, KioskPage, api } from '../lib/api';
 import { useToast } from '../lib/hooks';
 import { KioskContext } from '../lib/kiosk';
+import { isFamilyHubOS, keyboardWanted } from '../lib/touchKeyboard';
+import { useKeyboardMode } from '../lib/useTouchKeyboard';
 import { resolveLayout, useApplyTheme, useHomeLayout } from '../lib/layout';
 import { CalendarPage } from '../pages/CalendarPage';
 import { ChoresPage } from '../pages/ChoresPage';
@@ -241,6 +243,12 @@ function KioskMenu({
         <button className="btn btn-block" onClick={() => location.reload()}>
           <Icon name="refresh" size={16} /> Reload the screen
         </button>
+        {isFamilyHubOS() && (
+          <button className="btn btn-block" onClick={() => location.assign(OS_SETTINGS_URL)}>
+            <Icon name="settings" size={16} /> Screen settings (Wi-Fi, address, rotation)
+          </button>
+        )}
+        <KeyboardSetting kiosk />
         {confirmSignOut ? (
           <div className="kiosk-confirm">
             <p className="small">
@@ -262,6 +270,30 @@ function KioskMenu({
         )}
       </div>
     </Modal>
+  );
+}
+
+/** FamilyHub OS's on-device settings page (served by familyhub-setupd on the screen itself). */
+const OS_SETTINGS_URL = 'http://127.0.0.1:8099/';
+
+/** On-screen keyboard: Auto / On / Off for this device. */
+export function KeyboardSetting({ kiosk }: { kiosk: boolean }) {
+  const [mode, setMode] = useKeyboardMode();
+  const autoOn = keyboardWanted('auto', kiosk);
+  return (
+    <div className="keyboard-setting">
+      <span className="small">
+        <strong>On-screen keyboard</strong>
+        <span className="muted"> · {mode === 'auto' ? (autoOn ? 'shows when you tap a text box' : 'off on this device') : mode === 'on' ? 'always on' : 'off'}</span>
+      </span>
+      <div className="seg">
+        {(['auto', 'on', 'off'] as const).map((m) => (
+          <button type="button" key={m} className={mode === m ? 'on' : ''} onClick={() => setMode(m)}>
+            {m === 'auto' ? 'Auto' : m === 'on' ? 'On' : 'Off'}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 

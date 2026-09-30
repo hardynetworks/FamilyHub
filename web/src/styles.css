@@ -789,3 +789,11 @@ h1 { letter-spacing: -0.03em; }
 .approval-row { display: flex; align-items: center; gap: 12px; padding: 8px 6px; border-radius: 12px; flex-wrap: wrap; }
 .approval-row:hover { background: var(--surface-2); }
 .approval-actions { display: flex; gap: 6px; }
+
+/* ---------- On-screen keyboard (lib/touchKeyboard.ts) ---------- */
+.keyboard-setting { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+html.osk-open body { padding-bottom: var(--osk-h, 0px); }
+html.osk-open .modal-backdrop { bottom: var(--osk-h, 0px); }
+html.osk-open .modal { max-height: calc(100vh - var(--osk-h, 0px) - 24px); }
+html.osk-open .toasts { bottom: calc(var(--osk-h, 0px) + 16px); }
+html.osk-open .kiosk-nav, html.osk-open .kiosk-lock-float, html.osk-open .customize-fab { visibility: hidden; }

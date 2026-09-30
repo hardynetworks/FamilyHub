@@ -1,0 +1,13 @@
+[Unit]
+Description=FamilyHub OS on-screen setup (http://127.0.0.1:8099)
+After=NetworkManager.service
+Before=familyhub-kiosk.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/bin/familyhub-setupd
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

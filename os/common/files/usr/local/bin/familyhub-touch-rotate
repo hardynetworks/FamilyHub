@@ -1,0 +1,29 @@
+#!/bin/bash
+# Turns touch input to match the screen rotation, so a tap lands where the finger is.
+# The kiosk compositor rotates the picture but not the touch panel, so libinput gets a
+# calibration matrix through a udev rule. TOUCH_ROTATE in /etc/familyhub/kiosk.conf:
+#   auto (default, same as ROTATE) or normal / 90 / 180 / 270 for touch panels mounted differently.
+CONF=/etc/familyhub/kiosk.conf
+RULE=/etc/udev/rules.d/99-familyhub-touch.rules
+conf() { sed -n "s/^$1=\"\{0,1\}\([^\"]*\)\"\{0,1\}\$/\1/p" "$CONF" 2>/dev/null | tail -n 1; }
+
+R="$(conf TOUCH_ROTATE)"
+[ -z "$R" ] || [ "$R" = auto ] && R="$(conf ROTATE)"
+case "$R" in
+  90)  M="0 -1 1 1 0 0" ;;
+  180) M="-1 0 1 0 -1 1" ;;
+  270) M="0 1 0 -1 0 1" ;;
+  *)   M="" ;;
+esac
+
+if [ -n "$M" ]; then
+  NEW="ACTION==\"add|change\", SUBSYSTEM==\"input\", ENV{ID_INPUT_TOUCHSCREEN}==\"1\", ENV{LIBINPUT_CALIBRATION_MATRIX}=\"$M\""
+  [ "$(cat "$RULE" 2>/dev/null)" = "$NEW" ] && exit 0
+  printf '%s\n' "$NEW" > "$RULE"
+else
+  [ -f "$RULE" ] || exit 0
+  rm -f "$RULE"
+fi
+udevadm control --reload-rules 2>/dev/null || true
+udevadm trigger --subsystem-match=input --action=change 2>/dev/null || true
+exit 0

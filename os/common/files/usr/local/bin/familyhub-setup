@@ -1,5 +1,6 @@
 #!/bin/bash
-# FamilyHub OS setup menu. On the kiosk: press Ctrl+Alt+F2, sign in as "familyhub", run: sudo familyhub-setup
+# FamilyHub OS setup menu for a keyboard. (Touch screens: use the on-screen setup instead, from the
+# kiosk menu -> Screen settings.) On the kiosk: press Ctrl+Alt+F2, sign in as "familyhub", run: sudo familyhub-setup
 CONF=/etc/familyhub/kiosk.conf
 [ "$(id -u)" = 0 ] || exec sudo "$0" "$@"
 export NEWT_COLORS='root=,black window=,white border=black,white title=black,white button=white,red actbutton=white,red'
@@ -53,6 +54,14 @@ set_rotate() {
   local r
   r="$(whiptail --title "$TITLE" --menu "Screen rotation" 15 60 4 normal "Normal" 90 "90 degrees" 180 "Upside down" 270 "270 degrees" 3>&1 1>&2 2>&3)" || return 0
   setconf ROTATE "$r"
+  /usr/local/bin/familyhub-touch-rotate
+}
+
+set_touch_rotate() {
+  local r
+  r="$(whiptail --title "$TITLE" --menu "Touch rotation (use this if taps land in the wrong place)" 16 70 5 auto "Same as the screen (recommended)" normal "Not rotated" 90 "90 degrees" 180 "Upside down" 270 "270 degrees" 3>&1 1>&2 2>&3)" || return 0
+  setconf TOUCH_ROTATE "$r"
+  /usr/local/bin/familyhub-touch-rotate
 }
 
 set_tz() {
@@ -78,12 +87,13 @@ if [ "${1:-}" = "--first-boot" ]; then
 fi
 
 while true; do
-  choice="$(whiptail --title "$TITLE" --menu "FamilyHub address: $(conf FAMILYHUB_URL)\nTime zone: $(timedatectl show -p Timezone --value 2>/dev/null)" 22 74 10 \
+  choice="$(whiptail --title "$TITLE" --menu "FamilyHub address: $(conf FAMILYHUB_URL)\nTime zone: $(timedatectl show -p Timezone --value 2>/dev/null)" 23 74 11 \
     1 "FamilyHub address" \
     2 "Wi-Fi" \
     3 "Pairing code" \
     4 "Time zone" \
     5 "Rotate the screen" \
+    T "Touch rotation" \
     6 "Reset this screen's sign-in (needs a new pairing code)" \
     7 "Change the admin password" \
     8 "Restart the kiosk" \
@@ -95,6 +105,7 @@ while true; do
     3) set_code && restart_kiosk ;;
     4) set_tz ;;
     5) set_rotate && restart_kiosk ;;
+    T) set_touch_rotate && restart_kiosk ;;
     6) whiptail --title "$TITLE" --yesno "Sign this screen out of FamilyHub? You'll need a new pairing code from Settings -> Kiosk screens." 10 70 && { systemctl stop familyhub-kiosk.service; rm -rf /home/kiosk/.config/familyhub-browser; systemctl start familyhub-kiosk.service; } ;;
     7) passwd "${SUDO_USER:-familyhub}" ;;
     8) restart_kiosk; msg "The kiosk is restarting. Press Ctrl+Alt+F1 to go back to it." ;;

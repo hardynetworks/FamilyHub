@@ -2,7 +2,7 @@
 Description=FamilyHub OS boot settings (familyhub.txt on the SD card)
 After=NetworkManager.service
 Wants=NetworkManager.service
-Before=familyhub-firstboot.service familyhub-kiosk.service
+Before=familyhub-kiosk.service
 
 [Service]
 Type=oneshot

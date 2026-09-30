@@ -1,7 +1,11 @@
+# No longer used: FamilyHub OS now sets itself up on the touch screen (familyhub-setupd).
+# Kept so older installs that enabled it keep working; it exits straight away once an
+# address is set. The keyboard setup menu is still there: Ctrl+Alt+F2, then sudo familyhub-setup.
 [Unit]
-Description=FamilyHub OS first-time setup
+Description=FamilyHub OS first-time setup (old keyboard version)
 After=familyhub-boot.service systemd-user-sessions.service
 Before=familyhub-kiosk.service
+ConditionPathExists=/etc/familyhub/use-keyboard-setup
 Conflicts=getty@tty1.service
 
 [Service]

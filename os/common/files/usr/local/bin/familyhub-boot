@@ -1,13 +1,14 @@
 #!/bin/bash
 # Applies settings from familyhub.txt on the SD card's boot partition (Raspberry Pi), so a
-# screen can be set up from a PC before its first boot. Secrets are blanked after use.
+# screen can be set up from a PC before its first boot (optional: the screen can also be set up
+# by touch). Secrets are blanked after use. Also matches touch input to the screen rotation.
 set -u
 CONF=/etc/familyhub/kiosk.conf
 mkdir -p /run/familyhub
 chown kiosk: /run/familyhub 2>/dev/null || true
 
 for f in /boot/firmware/familyhub.txt /boot/familyhub.txt; do [ -f "$f" ] && BOOT="$f" && break; done
-[ -n "${BOOT:-}" ] || exit 0
+[ -n "${BOOT:-}" ] || { /usr/local/bin/familyhub-touch-rotate; exit 0; }
 val() {
   local line v
   line="$(grep -E "^[[:space:]]*$1[[:space:]]*=" "$BOOT" | tail -n 1 | tr -d '\r')" || true
@@ -30,6 +31,8 @@ if [ -n "$URL" ]; then
 fi
 ROT="$(val ROTATE)"
 case "$ROT" in normal|90|180|270) setconf ROTATE "$ROT" ;; esac
+TROT="$(val TOUCH_ROTATE)"
+case "$TROT" in auto|normal|90|180|270) setconf TOUCH_ROTATE "$TROT" ;; esac
 TZ_NAME="$(val TIMEZONE)"
 [ -n "$TZ_NAME" ] && [ -f "/usr/share/zoneinfo/$TZ_NAME" ] && timedatectl set-timezone "$TZ_NAME"
 
@@ -55,4 +58,6 @@ if [ -n "$SSID" ]; then
   nmcli connection up familyhub-wifi || true
   blank WIFI_PASSWORD
 fi
+[ -n "$COUNTRY" ] && setconf WIFI_COUNTRY "$COUNTRY"
+/usr/local/bin/familyhub-touch-rotate
 exit 0

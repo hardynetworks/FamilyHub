@@ -19,16 +19,24 @@ The screen pairs with FamilyHub the same way as any kiosk screen. A head of hous
 ## Raspberry Pi
 
 1. Flash `FamilyHubOS-RaspberryPi-arm64.img.xz` to a microSD card (8 GB or more) with [Raspberry Pi Imager](https://www.raspberrypi.com/software/) (**Choose OS → Use custom**, and **don't** apply OS customisation) or [balenaEtcher](https://etcher.balena.io/).
-2. Before you take the card out, open the **bootfs** drive that appears on your PC and edit **`familyhub.txt`**. Fill in:
-   - `FAMILYHUB_URL`: your FamilyHub address
-   - `WIFI_SSID`, `WIFI_PASSWORD`, `WIFI_COUNTRY`: skip these if you use a network cable
-   - `PAIRING_CODE` (optional): lets the screen pair itself with no keyboard. The code works for 30 minutes.
-   - `ROTATE` (optional): turns the picture for portrait screens
+2. Put the card in the Pi, connect the screen, and power it on.
+3. After a minute or two the **on-screen setup** appears. With a touch screen, just tap; an on-screen keyboard pops up when you need to type. (A mouse and keyboard work too.)
+   1. **Rotation:** pick the way the screen is mounted. It turns, and you tap **Keep** (if you don't, it turns back after 45 seconds).
+   2. **Network:** choose your Wi-Fi and type the password, or plug in a network cable.
+   3. **FamilyHub address:** type it and tap **Check address**.
+   4. **Pairing code:** from **Settings → App settings → Kiosk screens → Add a screen** on your phone. You can skip this and type it on the next screen instead.
+   5. Tap **Start FamilyHub**. The time zone comes from your FamilyHub.
 
-   The Wi-Fi password and pairing code are wiped from the card once they've been used.
-3. Put the card in the Pi, connect the screen, and power it on. The first boot takes a minute or two, and then FamilyHub appears.
+### Optional: set it up from your PC instead
 
-If you didn't fill in `familyhub.txt`, the first boot shows a setup screen instead. Use a keyboard to enter the address, Wi-Fi and pairing code.
+Before you take the card out of your PC, open the **bootfs** drive that appears and edit **`familyhub.txt`**:
+
+- `FAMILYHUB_URL`: your FamilyHub address
+- `WIFI_SSID`, `WIFI_PASSWORD`, `WIFI_COUNTRY`: skip these if you use a network cable
+- `PAIRING_CODE`: lets the screen pair itself. The code works for 30 minutes.
+- `ROTATE`: turns the picture for portrait screens
+
+The Wi-Fi password and pairing code are wiped from the card once they've been used. The screen then starts straight into FamilyHub, with no on-screen setup.
 
 ## x86 PCs (USB installer)
 
@@ -38,7 +46,7 @@ If you didn't fill in `familyhub.txt`, the first boot shows a setup screen inste
 2. **Plug the PC into your network with a cable.** The installer downloads the latest packages; Wi-Fi can be set up afterwards.
 3. Boot the PC from the USB stick. The boot menu key is often F12, F11, F8 or Esc. Choose **Install FamilyHub OS**, or wait 10 seconds.
 4. The install runs by itself. It asks only one question, **"Write the changes to disks?"**: choose **Yes** to erase the disk and install. It takes 5–15 minutes, then the PC restarts. Remove the USB stick.
-5. On the first start, a setup screen asks for your FamilyHub address, Wi-Fi if needed, and an optional pairing code. The time zone is set from your FamilyHub automatically.
+5. On the first start, the on-screen setup asks for the screen rotation, Wi-Fi if needed, your FamilyHub address and an optional pairing code, the same as on the Pi. With a touch screen, an on-screen keyboard appears for typing. The time zone is set from your FamilyHub automatically.
 
 ## Windows PCs
 
@@ -58,24 +66,31 @@ Windows can't be replaced with an image, so this sets up an existing Windows PC 
 
 ## Changing settings later (Pi and x86)
 
+On the screen, tap the lock button, enter the kiosk PIN, and choose **Screen settings (Wi-Fi, address, rotation)**. If the screen can't reach FamilyHub, a **Screen settings** button also appears on the "Waiting for the network" page.
+
+Screen settings lets you change:
+
+- the network (Wi-Fi)
+- the FamilyHub address
+- the pairing (pair the screen again with a new code)
+- the screen rotation
+- the time zone
+
+It can also restart the device. Tap **Back to FamilyHub** when you're done.
+
+### Touch lands in the wrong place after rotating?
+
+FamilyHub OS turns the touch input along with the picture. If your touch panel is mounted differently from the display, set **`TOUCH_ROTATE`** in `familyhub.txt` (Pi) or in the keyboard menu below to `normal`, `90`, `180` or `270`.
+
+### With a keyboard
+
 Connect a keyboard and press **Ctrl+Alt+F2**, then sign in as **`familyhub`**. The first-time password is `familyhub`, and you'll be asked to choose a new one. Then run:
 
 ```bash
 sudo familyhub-setup
 ```
 
-The menu lets you change:
-
-- the FamilyHub address
-- Wi-Fi
-- the pairing code
-- the time zone
-- screen rotation
-- the admin password
-
-It can also reset the screen's sign-in, or restart or reboot the screen.
-
-Press **Ctrl+Alt+F1** to go back to the kiosk.
+This menu has the same settings, plus **Touch rotation**, the admin password and resetting the screen's sign-in. Press **Ctrl+Alt+F1** to go back to the kiosk.
 
 ## What's inside
 
@@ -83,11 +98,11 @@ Press **Ctrl+Alt+F1** to go back to the kiosk.
   - Raspberry Pi OS Lite (64-bit), built with [pi-gen](https://github.com/RPi-Distro/pi-gen).
   - Debian's network installer with an automatic install file, for x86.
 - **Display:** [cage](https://github.com/cage-kiosk/cage), a minimal Wayland kiosk display server, runs Chromium full screen as a locked-down `kiosk` user.
-  - It opens a small local start page (`/usr/share/familyhub/start.html`) that waits for the network, then opens `<your FamilyHub>/kiosk`.
+  - It opens a small local start page (`/usr/share/familyhub/start.html`) that waits for the network, then opens `<your FamilyHub>/kiosk`, or the on-screen setup if there's no address yet.
   - Chromium is reopened if it ever closes.
 - **Services:**
   - `familyhub-boot` applies `familyhub.txt` on the Pi.
-  - `familyhub-firstboot` runs the setup screen on first boot.
+  - `familyhub-setupd` serves the on-screen setup at `http://127.0.0.1:8099` (Python, localhost only) and applies Wi-Fi, address, pairing code, rotation and time zone.
   - `familyhub-kiosk` runs the kiosk itself.
   - Settings live in `/etc/familyhub/kiosk.conf`.
 - **Network:** NetworkManager handles all connections. SSH is off.
@@ -105,4 +120,3 @@ Press **Ctrl+Alt+F1** to go back to the kiosk.
 - Read-only system mode, so a power cut can never damage the SD card.
 - Screen off (or dimmed) at night on a schedule, waking for the doorbell.
 - An optional NetBird / Tailscale client, for FamilyHub servers that are only reachable over a VPN.
-- On-screen setup and keyboard for touch-only screens (no keyboard needed at all).

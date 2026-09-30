@@ -1,0 +1,447 @@
+#!/usr/bin/env python3
+"""
+FamilyHub OS on-screen setup service.
+
+Serves the touch setup page (/usr/share/familyhub/setup) at http://127.0.0.1:8099 to the kiosk
+browser on this screen, and applies what's chosen there: Wi-Fi, the FamilyHub address, the
+pairing code, the time zone and the screen rotation.
+
+It listens on 127.0.0.1 only. Requests must use that address as Host (no DNS rebinding) and
+changes must come from the setup page itself (Origin check + JSON body), so web pages opened
+elsewhere can't change settings.
+"""
+import json
+import os
+import re
+import shutil
+import ssl
+import subprocess
+import threading
+import time
+import urllib.error
+import urllib.request
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+PORT = int(os.environ.get("FAMILYHUB_SETUP_PORT", "8099"))
+CONF = os.environ.get("FAMILYHUB_CONF", "/etc/familyhub/kiosk.conf")
+STATIC = os.environ.get("FAMILYHUB_SETUP_STATIC", "/usr/share/familyhub/setup")
+ICON = os.environ.get("FAMILYHUB_ICON", "/usr/share/familyhub/icon.svg")
+RUN = os.environ.get("FAMILYHUB_RUN", "/run/familyhub")
+PROFILE = "/home/kiosk/.config/familyhub-browser"
+DRY = os.environ.get("FAMILYHUB_SETUP_DRY") == "1"  # for testing on a PC: don't touch the system
+ALLOWED_HOSTS = {f"127.0.0.1:{PORT}", f"localhost:{PORT}"}
+ALLOWED_ORIGINS = {f"http://127.0.0.1:{PORT}", f"http://localhost:{PORT}"}
+ROTATIONS = ("normal", "90", "180", "270")
+ROTATE_CONFIRM_SECONDS = 45
+TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".svg": "image/svg+xml"}
+
+lock = threading.Lock()
+rotate_pending = {"deadline": 0.0, "previous": None, "timer": None, "reverted": False}
+
+
+# ---------------------------------------------------------------------------------------------
+# Settings file (/etc/familyhub/kiosk.conf, KEY="value" lines shared with the shell scripts)
+# ---------------------------------------------------------------------------------------------
+def read_conf():
+    out = {}
+    try:
+        with open(CONF) as f:
+            for line in f:
+                m = re.match(r'^([A-Z_]+)="?([^"]*)"?\s*$', line.strip())
+                if m:
+                    out[m.group(1)] = m.group(2)
+    except FileNotFoundError:
+        pass
+    return out
+
+
+def set_conf(values):
+    lines = []
+    try:
+        with open(CONF) as f:
+            lines = f.read().splitlines()
+    except FileNotFoundError:
+        pass
+    for key, value in values.items():
+        value = re.sub(r'["\\$`\n\r]', "", str(value))
+        new = f'{key}="{value}"'
+        for i, line in enumerate(lines):
+            if line.startswith(key + "="):
+                lines[i] = new
+                break
+        else:
+            lines.append(new)
+    tmp = CONF + ".tmp"
+    with open(tmp, "w") as f:
+        f.write("\n".join(lines) + "\n")
+    os.replace(tmp, CONF)
+
+
+def clean_url(url):
+    url = (url or "").strip().replace(" ", "")
+    if not url:
+        return ""
+    if not re.match(r"^https?://", url, re.I):
+        url = "https://" + url
+    url = re.sub(r"/kiosk/*$", "", url)
+    url = url.rstrip("/")
+    return re.sub(r"[^A-Za-z0-9:/._~%-]", "", url)
+
+
+# ---------------------------------------------------------------------------------------------
+# System helpers
+# ---------------------------------------------------------------------------------------------
+def run(args, timeout=30):
+    if DRY:
+        print("DRY:", " ".join(args), flush=True)
+        return subprocess.CompletedProcess(args, 0, "", "")
+    try:
+        return subprocess.run(args, capture_output=True, text=True, timeout=timeout)
+    except FileNotFoundError:
+        return subprocess.CompletedProcess(args, 127, "", f"{args[0]} is not installed")
+    except subprocess.TimeoutExpired:
+        return subprocess.CompletedProcess(args, 124, "", "timed out")
+
+
+def nm_split(line):
+    """Split one line of `nmcli -t` output (fields separated by ':', literal ':' escaped as '\\:')."""
+    parts, cur, esc = [], "", False
+    for ch in line:
+        if esc:
+            cur += ch
+            esc = False
+        elif ch == "\\":
+            esc = True
+        elif ch == ":":
+            parts.append(cur)
+            cur = ""
+        else:
+            cur += ch
+    parts.append(cur)
+    return parts
+
+
+def network_status():
+    status = {"connected": False, "kind": None, "name": None, "ip": None, "wifiDevice": False}
+    r = run(["nmcli", "-t", "-f", "DEVICE,TYPE,STATE,CONNECTION", "device"], 10)
+    for line in r.stdout.splitlines():
+        dev, typ, state, conn = (nm_split(line) + ["", "", "", ""])[:4]
+        if typ == "wifi":
+            status["wifiDevice"] = True
+        if state == "connected" and typ in ("wifi", "ethernet") and not status["connected"]:
+            status.update(connected=True, kind=typ, name=conn if typ == "wifi" else "Network cable")
+    if status["kind"] == "wifi":
+        r = run(["nmcli", "-t", "-f", "ACTIVE,SSID", "device", "wifi"], 10)
+        for line in r.stdout.splitlines():
+            active, ssid = (nm_split(line) + [""])[:2]
+            if active == "yes" and ssid:
+                status["name"] = ssid
+    ips = run(["hostname", "-I"], 5).stdout.split()
+    status["ip"] = next((ip for ip in ips if "." in ip), ips[0] if ips else None)
+    return status
+
+
+def wifi_scan():
+    run(["rfkill", "unblock", "wifi"], 5)
+    r = run(["nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY", "device", "wifi", "list", "--rescan", "yes"], 25)
+    seen = {}
+    for line in r.stdout.splitlines():
+        inuse, ssid, signal, security = (nm_split(line) + ["", "", "", ""])[:4]
+        if not ssid:
+            continue
+        net = {"ssid": ssid, "signal": int(signal or 0), "secure": bool(security.strip() and security.strip() != "--"),
+               "security": security, "active": inuse.strip() == "*"}
+        if ssid not in seen or net["signal"] > seen[ssid]["signal"] or net["active"]:
+            seen[ssid] = net
+    nets = sorted(seen.values(), key=lambda n: (not n["active"], -n["signal"]))
+    if r.returncode != 0 and not nets:
+        return {"networks": [], "error": (r.stderr or "Couldn't scan for Wi-Fi networks").strip()}
+    return {"networks": nets}
+
+
+def wifi_connect(ssid, password, hidden=False, country=None, security=""):
+    if country and re.fullmatch(r"[A-Z]{2}", country):
+        set_conf({"WIFI_COUNTRY": country})
+        if shutil.which("raspi-config"):
+            run(["raspi-config", "nonint", "do_wifi_country", country], 20)
+        elif shutil.which("iw"):
+            run(["iw", "reg", "set", country], 5)
+    run(["rfkill", "unblock", "wifi"], 5)
+    run(["nmcli", "connection", "delete", "familyhub-wifi"], 10)
+    args = ["nmcli", "connection", "add", "type", "wifi", "con-name", "familyhub-wifi", "ssid", ssid, "connection.autoconnect", "yes"]
+    if password:
+        sae = "WPA3" in security and "WPA2" not in security
+        args += ["wifi-sec.key-mgmt", "sae" if sae else "wpa-psk", "wifi-sec.psk", password]
+    if hidden:
+        args += ["802-11-wireless.hidden", "yes"]
+    r = run(args, 15)
+    if r.returncode != 0:
+        return {"ok": False, "error": (r.stderr or r.stdout).strip() or "Couldn't save the Wi-Fi network"}
+    r = run(["nmcli", "--wait", "45", "connection", "up", "familyhub-wifi"], 60)
+    if r.returncode == 0:
+        return {"ok": True}
+    err = (r.stderr or r.stdout).strip()
+    if re.search(r"secrets were required|802-1x|psk|password", err, re.I):
+        msg = "That Wi-Fi password didn't work. Check it and try again."
+    elif re.search(r"no network with ssid|not found", err, re.I):
+        msg = f"Couldn't find “{ssid}”. Move the screen closer to the router, or check the name."
+    elif r.returncode == 124:
+        msg = "Connecting took too long. Check the password and try again."
+    else:
+        msg = err or "Couldn't connect to that network."
+    return {"ok": False, "error": msg}
+
+
+def fetch_json(url, timeout=8):
+    req = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": "FamilyHubOS-setup"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read().decode("utf-8", "replace") or "null")
+
+
+def check_hub(url):
+    url = clean_url(url)
+    if not re.match(r"^https?://[A-Za-z0-9.-]+(:\d+)?(/.*)?$", url):
+        return {"ok": False, "error": "That doesn't look like a web address. Example: https://family.example.com"}
+    try:
+        fetch_json(url + "/api/health")
+    except urllib.error.HTTPError as e:
+        return {"ok": False, "url": url, "error": f"The server answered with an error ({e.code}). Is this your FamilyHub address?"}
+    except (ssl.SSLError, ssl.CertificateError) as e:
+        return {"ok": False, "url": url, "error": f"The server's security certificate isn't trusted ({getattr(e, 'reason', e)})."}
+    except urllib.error.URLError as e:
+        reason = e.reason
+        if isinstance(reason, (ssl.SSLError, ssl.CertificateError)):
+            return {"ok": False, "url": url, "error": "The server's security certificate isn't trusted."}
+        return {"ok": False, "url": url, "error": f"Couldn't reach {url} ({reason}). Check the address and the network."}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "url": url, "error": f"Couldn't reach {url} ({e})."}
+    name, tz = "", ""
+    try:
+        s = fetch_json(url + "/api/auth/status") or {}
+        name = s.get("familyName") or s.get("appName") or ""
+        tz = s.get("timezone") or ""
+    except Exception:  # noqa: BLE001
+        pass
+    return {"ok": True, "url": url, "name": name, "timezone": tz}
+
+
+def timezones():
+    r = run(["timedatectl", "list-timezones"], 10)
+    zones = [z for z in r.stdout.split() if "/" in z] if r.returncode == 0 else []
+    return zones or ["UTC"]
+
+
+def current_timezone():
+    r = run(["timedatectl", "show", "-p", "Timezone", "--value"], 5)
+    return r.stdout.strip() or "UTC"
+
+
+def set_timezone(tz):
+    if tz and re.fullmatch(r"[A-Za-z0-9_+\-/]+", tz) and os.path.exists(f"/usr/share/zoneinfo/{tz}"):
+        run(["timedatectl", "set-timezone", tz], 10)
+        return True
+    return False
+
+
+def open_setup_after_restart():
+    os.makedirs(RUN, exist_ok=True)
+    with open(os.path.join(RUN, "open-setup"), "w") as f:
+        f.write("1")
+    try:
+        shutil.chown(RUN, "kiosk")
+        shutil.chown(os.path.join(RUN, "open-setup"), "kiosk")
+    except (LookupError, PermissionError, OSError):
+        pass
+
+
+def restart_kiosk(delay=1.2, reset_profile=False):
+    def go():
+        time.sleep(delay)
+        if reset_profile:
+            run(["systemctl", "stop", "familyhub-kiosk.service"], 30)
+            if not DRY:
+                shutil.rmtree(PROFILE, ignore_errors=True)
+            run(["systemctl", "start", "familyhub-kiosk.service"], 30)
+        else:
+            run(["systemctl", "restart", "familyhub-kiosk.service"], 30)
+    threading.Thread(target=go, daemon=True).start()
+
+
+def apply_rotation(rotation):
+    set_conf({"ROTATE": rotation})
+    run(["/usr/local/bin/familyhub-touch-rotate"], 20)
+
+
+def revert_rotation():
+    with lock:
+        prev = rotate_pending["previous"]
+        rotate_pending.update(deadline=0.0, previous=None, timer=None, reverted=True)
+    if prev:
+        apply_rotation(prev)
+        open_setup_after_restart()
+        restart_kiosk(0.2)
+
+
+# ---------------------------------------------------------------------------------------------
+# HTTP
+# ---------------------------------------------------------------------------------------------
+class Handler(BaseHTTPRequestHandler):
+    server_version = "FamilyHubSetup/1"
+
+    def log_message(self, fmt, *args):  # keep the journal quiet (and passwords out of it)
+        pass
+
+    def send(self, code, body, ctype="application/json"):
+        data = body if isinstance(body, bytes) else json.dumps(body).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.end_headers()
+        self.wfile.write(data)
+
+    def host_ok(self):
+        if self.headers.get("Host", "") not in ALLOWED_HOSTS:
+            self.send(421, {"error": "Open this page at http://127.0.0.1:%d/" % PORT})
+            return False
+        return True
+
+    def do_GET(self):
+        if not self.host_ok():
+            return
+        path = self.path.split("?", 1)[0]
+        if path == "/api/state":
+            conf = read_conf()
+            with lock:
+                left = max(0, int(rotate_pending["deadline"] - time.time())) if rotate_pending["deadline"] else 0
+                reverted = rotate_pending["reverted"]
+                rotate_pending["reverted"] = False
+            return self.send(200, {
+                "url": conf.get("FAMILYHUB_URL", ""),
+                "rotate": conf.get("ROTATE", "normal") or "normal",
+                "country": conf.get("WIFI_COUNTRY", "") or "US",
+                "timezone": current_timezone(),
+                "network": network_status(),
+                "hostname": os.uname().nodename,
+                "platform": open("/etc/familyhub/platform").read().strip() if os.path.exists("/etc/familyhub/platform") else "",
+                "rotateConfirmSeconds": left,
+                "rotateReverted": reverted,
+            })
+        if path == "/api/wifi":
+            return self.send(200, wifi_scan())
+        if path == "/api/timezones":
+            return self.send(200, {"timezones": timezones()})
+        if path == "/icon.svg" and os.path.exists(ICON):
+            with open(ICON, "rb") as f:
+                return self.send(200, f.read(), TYPES[".svg"])
+        name = "index.html" if path in ("/", "/index.html") else path.lstrip("/")
+        if re.fullmatch(r"[a-z0-9-]+\.(html|js|css|svg)", name):
+            full = os.path.join(STATIC, name)
+            if os.path.isfile(full):
+                with open(full, "rb") as f:
+                    return self.send(200, f.read(), TYPES[os.path.splitext(name)[1]])
+        self.send(404, {"error": "Not found"})
+
+    def do_POST(self):
+        if not self.host_ok():
+            return
+        if self.headers.get("Origin") not in ALLOWED_ORIGINS or not self.headers.get("Content-Type", "").startswith("application/json"):
+            return self.send(403, {"error": "Changes can only be made from this screen's setup page."})
+        try:
+            length = min(int(self.headers.get("Content-Length") or 0), 65536)
+            body = json.loads(self.rfile.read(length) or b"{}")
+            if not isinstance(body, dict):
+                raise ValueError
+        except ValueError:
+            return self.send(400, {"error": "Bad request"})
+        path = self.path.split("?", 1)[0]
+        try:
+            self.send(200, self.route(path, body))
+        except LookupError:
+            self.send(404, {"error": "Not found"})
+        except Exception as e:  # noqa: BLE001
+            self.send(500, {"error": str(e) or "Something went wrong"})
+
+    def route(self, path, b):
+        if path == "/api/wifi":
+            ssid = str(b.get("ssid", ""))[:64]
+            if not ssid:
+                return {"ok": False, "error": "Choose a Wi-Fi network."}
+            return wifi_connect(ssid, str(b.get("password", ""))[:128], bool(b.get("hidden")),
+                                str(b.get("country", "")).upper()[:2], str(b.get("security", "")))
+        if path == "/api/check":
+            return check_hub(str(b.get("url", ""))[:300])
+        if path == "/api/save":
+            values = {}
+            if "url" in b:
+                url = clean_url(str(b["url"])[:300])
+                if not url:
+                    return {"ok": False, "error": "Enter your FamilyHub address."}
+                values["FAMILYHUB_URL"] = url
+            if values:
+                set_conf(values)
+            tz = str(b.get("timezone", ""))
+            if tz:
+                set_timezone(tz)
+            code = re.sub(r"[^A-Za-z0-9-]", "", str(b.get("code", "")))[:32]
+            if code:
+                os.makedirs(RUN, exist_ok=True)
+                with open(os.path.join(RUN, "pair-code"), "w") as f:
+                    f.write(code)
+                os.chmod(os.path.join(RUN, "pair-code"), 0o644)
+            if b.get("restart", True):
+                # A new pairing code means signing this screen out of its old pairing first.
+                restart_kiosk(reset_profile=bool(code))
+            return {"ok": True}
+        if path == "/api/rotate":
+            rotation = str(b.get("rotate", ""))
+            if rotation not in ROTATIONS:
+                return {"ok": False, "error": "Unknown rotation"}
+            current = read_conf().get("ROTATE", "normal") or "normal"
+            if rotation == current:
+                return {"ok": True, "unchanged": True}
+            with lock:
+                if rotate_pending["timer"]:
+                    rotate_pending["timer"].cancel()
+                previous = rotate_pending["previous"] or current
+                t = threading.Timer(ROTATE_CONFIRM_SECONDS, revert_rotation)
+                t.daemon = True
+                rotate_pending.update(deadline=time.time() + ROTATE_CONFIRM_SECONDS, previous=previous, timer=t, reverted=False)
+                t.start()
+            apply_rotation(rotation)
+            open_setup_after_restart()
+            restart_kiosk(0.5)
+            return {"ok": True}
+        if path == "/api/rotate/keep":
+            with lock:
+                if rotate_pending["timer"]:
+                    rotate_pending["timer"].cancel()
+                rotate_pending.update(deadline=0.0, previous=None, timer=None)
+            return {"ok": True}
+        if path == "/api/rotate/undo":
+            with lock:
+                if rotate_pending["timer"]:
+                    rotate_pending["timer"].cancel()
+            threading.Thread(target=revert_rotation, daemon=True).start()
+            return {"ok": True}
+        if path == "/api/done":
+            restart_kiosk(0.3)
+            return {"ok": True}
+        if path == "/api/reboot":
+            threading.Thread(target=lambda: (time.sleep(1), run(["systemctl", "reboot"], 10)), daemon=True).start()
+            return {"ok": True}
+        raise LookupError(path)
+
+
+def main():
+    server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
+    server.daemon_threads = True
+    print(f"FamilyHub setup listening on http://127.0.0.1:{PORT}/", flush=True)
+    server.serve_forever()
+
+
+if __name__ == "__main__":
+    main()

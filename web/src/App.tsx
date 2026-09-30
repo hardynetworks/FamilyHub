@@ -4,6 +4,7 @@ import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { DoorbellPopup } from './components/Cameras';
 import { KioskPairPage, KioskShell } from './components/Kiosk';
 import { resolveLayout, useApplyTheme, useHomeLayout } from './lib/layout';
+import { useTouchKeyboard } from './lib/useTouchKeyboard';
 import { Avatar, Icon, Spinner } from './components/ui';
 import { api } from './lib/api';
 import { ToastContext, ToastFn, useAuthStatus } from './lib/hooks';
@@ -37,6 +38,7 @@ export function App() {
   useEffect(() => {
     if (status?.appName) document.title = status.appName;
   }, [status?.appName]);
+  useTouchKeyboard(!!status?.device || pathname.startsWith('/kiosk'));
 
   let body;
   if (isLoading) body = <div className="center-screen"><Spinner /></div>;
