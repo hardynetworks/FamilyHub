@@ -22,9 +22,10 @@ import { weatherRouter } from './routes/weather';
 import { homeRouter } from './routes/home';
 import { devicesAdminRouter, kioskRouter } from './routes/kiosk';
 import { approveRouter } from './routes/approve';
+import { pushRouter, startDoorbellPush } from './push';
 import { camerasRouter, go2rtcRouter } from './routes/cameras';
 import { attachGo2rtcProxy } from './go2rtcProxy';
-import { startEvents, startLiveVideoManager } from './protect';
+import { assertCamera, startEvents, startLiveVideoManager } from './protect';
 import { errorHandler } from './util';
 
 async function main() {
@@ -88,6 +89,7 @@ async function main() {
   app.use('/api/weather', requireAuth, weatherRouter);
   app.use('/api/home', requireAuth, homeRouter);
   app.use('/api/cameras', requireAuth, camerasRouter);
+  app.use('/api/push', requireAuth, pushRouter);
   app.use('/go2rtc', requireAuth, go2rtcRouter);
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));
   // One-tap chore approval links from emails, texts and push notifications (the link itself is the key).
@@ -115,6 +117,7 @@ async function main() {
   attachGo2rtcProxy(server, sessionMiddleware);
   startEvents();
   startLiveVideoManager();
+  startDoorbellPush(async (id) => (await assertCamera(id)).name);
   startSyncLoop();
 }
 

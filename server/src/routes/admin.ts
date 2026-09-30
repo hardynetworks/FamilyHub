@@ -124,6 +124,28 @@ const Patch = z
     mailjetSecretKey: z.string().trim().max(200).nullable().optional(),
     mailFromEmail: z.union([z.literal(''), z.string().trim().email().max(200)]).nullable().optional(),
     mailFromName: str(100),
+    fcmServiceAccount: z
+      .string()
+      .max(20000)
+      .refine((v) => {
+        if (v === '') return true;
+        try {
+          const j = JSON.parse(v);
+          return !!(j.client_email && j.private_key && j.project_id);
+        } catch {
+          return false;
+        }
+      }, 'paste the whole service-account .json file (it must contain project_id, client_email and private_key)')
+      .nullable()
+      .optional(),
+    fcmAndroidAppId: z
+      .string()
+      .trim()
+      .max(200)
+      .refine((v) => v === '' || /^1:\d+:android:[0-9a-f]+$/.test(v), 'looks like 1:1234567890:android:abc123def456')
+      .nullable()
+      .optional(),
+    fcmApiKey: str(200),
     pushoverAppToken: z.string().max(100).nullable().optional(),
     pushoverUserKey: z.string().max(100).nullable().optional(),
     camerasTileQuality: z.enum(['high', 'medium', 'low']).nullable().optional(),

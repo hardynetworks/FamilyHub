@@ -1,0 +1,11 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- The FamilyHub house (web/public/icon.svg), scaled into the adaptive-icon safe zone. -->
+    <group android:scaleX="0.1875" android:scaleY="0.1875" android:translateX="6" android:translateY="6">
+        <path android:fillColor="#FFF7EF" android:pathData="M256,104 L96,232 L96,408 L208,408 L208,304 L304,304 L304,408 L416,408 L416,232 Z" />
+        <path android:fillColor="#E8664A" android:pathData="M256,194 a34,34 0 1,0 0.1,0 Z" />
+    </group>
+</vector>

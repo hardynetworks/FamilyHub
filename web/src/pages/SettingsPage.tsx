@@ -126,6 +126,17 @@ export function SettingsPage({ onLogout }: { onLogout: () => void }) {
           {tab === 'profile' && (
             <>
               <ProfileCard />
+              {(window as any).FamilyHubAndroid && (
+                <section className="card">
+                  <h2>Android app</h2>
+                  <p className="muted small">Connected to {(window as any).FamilyHubAndroid.serverUrl?.()}</p>
+                  <div>
+                    <button className="btn" onClick={() => (window as any).FamilyHubAndroid.changeServer()}>
+                      Change server
+                    </button>
+                  </div>
+                </section>
+              )}
               <section className="card">
                 <h2>About</h2>
                 <p className="muted small">

@@ -4,6 +4,7 @@
  */
 import type { UserRow } from './auth';
 import { q } from './db';
+import { pushToUsers } from './push';
 import { getSetting } from './settings';
 
 export interface Channel {
@@ -17,6 +18,9 @@ export interface ParentAlert {
   message: string;
   /** Link that opens the approval page. */
   url?: string;
+  /** One-tap approve / deny (POST), used by the Android app's notification buttons. */
+  approveUrl?: string;
+  denyUrl?: string;
 }
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -101,6 +105,20 @@ export async function notifyParents(a: ParentAlert, only?: UserRow[]): Promise<C
       }
     }
   }
+  {
+    const r = await pushToUsers(
+      people.map((p) => p.id),
+      {
+        type: a.approveUrl ? 'approval' : 'message',
+        title: a.title,
+        body: a.message,
+        ...(a.url ? { url: a.url } : {}),
+        ...(a.approveUrl ? { approveUrl: a.approveUrl } : {}),
+        ...(a.denyUrl ? { denyUrl: a.denyUrl } : {}),
+      },
+    );
+    if (r.sent || r.failed) out.push({ channel: 'Android app', ok: r.failed === 0, message: r.failed ? `${r.sent} sent, ${r.failed} failed: ${r.error}` : `Sent to ${r.sent} phone${r.sent === 1 ? '' : 's'}` });
+  }
   if (getSetting('pushoverAppToken') && getSetting('pushoverUserKey')) {
     try {
       await sendPushover(a);
@@ -119,7 +137,7 @@ export async function sendTestNotifications(user: UserRow) {
     [user],
   );
   if (!results.length) {
-    return { ok: false, message: 'Nothing is set up yet: add your Mailjet keys and sender address (or Pushover keys), and save.', results };
+    return { ok: false, message: 'Nothing was sent: set up Mailjet or Pushover, or sign in to the Android app on your phone, and try again.', results };
   }
   return { ok: results.every((r) => r.ok), message: results.map((r) => `${r.channel}: ${r.ok ? '✓ ' : '✗ '}${r.message}`).join('\n'), results };
 }

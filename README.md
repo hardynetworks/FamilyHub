@@ -419,6 +419,15 @@ A web page can't stop someone pressing the tablet's own Home button, so use the 
      On newer Raspberry Pi OS versions the command is `chromium` instead of `chromium-browser`.
   3. Reboot, enter the pairing code once, and it will start straight into FamilyHub from then on.
 
+### Android app
+
+**[FamilyHub for Android](android/README.md)** puts FamilyHub on your phone. It has instant notifications:
+
+- chores waiting for approval, with **Approve / Not yet** buttons
+- the doorbell
+
+Install the APK from the **Releases** page (or, once published, from Google Play), open it and enter your FamilyHub address. Notifications use Firebase; see [android/README.md](android/README.md) to set them up.
+
 ### FamilyHub OS: ready-made kiosk images
 
 Don't want to set a screen up by hand? **[FamilyHub OS](os/README.md)** boots straight into a FamilyHub kiosk:

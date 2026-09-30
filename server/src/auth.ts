@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { baseUrl, config, isValidTimezone } from './config';
 import { getSetting, isLockedByEnv, onSettingsChange, saveSettings } from './settings';
 import { one, q } from './db';
+import { forgetSessionPush } from './push';
 import { BOOT_ID, DEVICE_COOKIE, DeviceRow, deviceOptions, hashToken, readCookie, touchDevice } from './devices';
 import { HttpError, decodeJwtPayload, parse, randomToken } from './util';
 
@@ -248,6 +249,7 @@ authRouter.post('/login', async (req, res) => {
 
 authRouter.post('/logout', (req, res) => {
   if (req.device) throw new HttpError(403, 'This is a kiosk screen. Use the kiosk menu (with the PIN) to sign it out.');
+  void forgetSessionPush(req.sessionID);
   req.session.destroy(() => {
     res.clearCookie('familyhub.sid');
     res.json({ ok: true });

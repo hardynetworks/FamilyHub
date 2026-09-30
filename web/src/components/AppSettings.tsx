@@ -369,6 +369,41 @@ export function AppSettings({ section }: { section: AppSection }) {
           />
           <SettingsSection
             data={d}
+            title="Android app notifications (Firebase)"
+            status={d.settings.fcmServiceAccount?.isSet && d.settings.fcmAndroidAppId?.value ? { ok: true, text: 'Set up' } : { ok: false, text: 'Not set up' }}
+            intro={
+              <>
+                <p className="muted small">
+                  Instant notifications in the FamilyHub Android app: chores waiting for approval (with <strong>Approve / Not yet</strong> buttons) and the doorbell. Uses Google's free
+                  Firebase Cloud Messaging.
+                </p>
+                <ol className="steps small">
+                  <li>
+                    At <a href="https://console.firebase.google.com" target="_blank" rel="noreferrer">console.firebase.google.com</a>, create a project (Analytics not needed).
+                  </li>
+                  <li>
+                    <strong>Add app → Android</strong> with the package name <code>io.github.hardynetworks.familyhub</code>. Skip the download and SDK steps.
+                  </li>
+                  <li>
+                    In <strong>Project settings → General → Your apps</strong>, copy the <strong>App ID</strong> (1:…:android:…). The <strong>Web API key</strong> is at the top of the same page.
+                  </li>
+                  <li>
+                    In <strong>Project settings → Service accounts</strong>, click <strong>Generate new private key</strong>, open the downloaded .json file and paste all of it below.
+                  </li>
+                  <li>Save, sign in to the Android app on your phone, and send a test.</li>
+                </ol>
+              </>
+            }
+            fields={[
+              { key: 'fcmAndroidAppId', label: 'Android App ID', kind: 'text', placeholder: '1:1234567890:android:abc123def456' },
+              { key: 'fcmApiKey', label: 'Web API key', kind: 'text', placeholder: 'AIza…' },
+              { key: 'fcmServiceAccount', label: 'Service account key (.json)', kind: 'secret' },
+            ]}
+            test={{ label: 'Send a test', run: () => api<TestResult>('/admin/notifications/test', 'POST') }}
+            footerNote="Save first, then send a test from a phone signed in to the app."
+          />
+          <SettingsSection
+            data={d}
             title="Phone push notifications (Pushover)"
             status={d.settings.pushoverAppToken?.isSet ? { ok: true, text: 'Set up' } : { ok: false, text: 'Optional' }}
             intro={

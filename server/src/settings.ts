@@ -59,6 +59,9 @@ export interface Settings {
   mailjetSecretKey: string;
   mailFromEmail: string;
   mailFromName: string;
+  fcmServiceAccount: string;
+  fcmAndroidAppId: string;
+  fcmApiKey: string;
   pushoverAppToken: string;
   pushoverUserKey: string;
 }
@@ -122,6 +125,9 @@ export const DEFS: Record<SettingKey, Def> = {
   mailjetSecretKey: { env: 'MAILJET_SECRET_KEY', def: '', secret: true },
   mailFromEmail: { env: 'MAIL_FROM_EMAIL', def: '' }, // must be a sender address verified in Mailjet
   mailFromName: { env: 'MAIL_FROM_NAME', def: '' },
+  fcmServiceAccount: { env: 'FCM_SERVICE_ACCOUNT', def: '', secret: true }, // Firebase service-account JSON
+  fcmAndroidAppId: { env: 'FCM_ANDROID_APP_ID', def: '' }, // e.g. 1:1234567890:android:abc123
+  fcmApiKey: { env: 'FCM_API_KEY', def: '' }, // Firebase Web/Android API key (not a secret)
   pushoverAppToken: { env: 'PUSHOVER_APP_TOKEN', def: '', secret: true },
   pushoverUserKey: { env: 'PUSHOVER_USER_KEY', def: '', secret: true }, // bcrypt hash of the kiosk PIN, set in Settings → Kiosk screens
 };

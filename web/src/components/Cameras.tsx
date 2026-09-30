@@ -186,6 +186,17 @@ export function DoorbellPopup() {
     return () => es.close();
   }, [enabled]);
 
+  // Opened from an Android doorbell notification (/?doorbell=<cameraId>): show that camera.
+  useEffect(() => {
+    if (!enabled) return;
+    const id = new URLSearchParams(location.search).get('doorbell');
+    if (!id) return;
+    history.replaceState(null, '', location.pathname);
+    const secs = dataRef.current?.doorbell?.seconds ?? 30;
+    setRing({ cameraId: id, until: Date.now() + secs * 1000 });
+    setNow(Date.now());
+  }, [enabled]);
+
   useEffect(() => {
     if (!ring) return;
     const t = setInterval(() => {

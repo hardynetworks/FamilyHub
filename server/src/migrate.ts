@@ -195,6 +195,21 @@ alter table chore_completions
 create index chore_completions_pending_idx on chore_completions (status) where status = 'pending';
 `,
   },
+  {
+    id: '007_push_tokens',
+    sql: `
+create table push_tokens (
+  token text primary key,
+  user_id uuid not null references users(id) on delete cascade,
+  platform text not null default 'android',
+  device_name text,
+  session_id text,
+  created_at timestamptz not null default now(),
+  last_seen timestamptz not null default now()
+);
+create index push_tokens_user_idx on push_tokens (user_id);
+`,
+  },
 ];
 
 export async function migrate(): Promise<void> {
