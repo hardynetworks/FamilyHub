@@ -1,7 +1,7 @@
 /**
  * One-tap chore approval from an email, text or push notification (no sign-in needed: the link
  * carries a one-time secret). GET only shows a confirmation page, so mail scanners that open
- * links can't approve anything; approving is a POST (the page's buttons, or ntfy's action buttons).
+ * links can't approve anything; approving is a POST from the page's buttons.
  */
 import { Request, Response, Router } from 'express';
 import { one } from '../db';

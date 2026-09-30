@@ -55,15 +55,10 @@ export interface Settings {
   webrtcPort: number;
   kioskPinHash: string;
   choreApproval: string;
-  smtpHost: string;
-  smtpPort: number;
-  smtpSecurity: string;
-  smtpUser: string;
-  smtpPassword: string;
-  smtpFrom: string;
-  ntfyUrl: string;
-  ntfyTopic: string;
-  ntfyToken: string;
+  mailjetApiKey: string;
+  mailjetSecretKey: string;
+  mailFromEmail: string;
+  mailFromName: string;
   pushoverAppToken: string;
   pushoverUserKey: string;
 }
@@ -123,15 +118,10 @@ export const DEFS: Record<SettingKey, Def> = {
   homeDefaultLayout: { env: 'HOME_DEFAULT_LAYOUT', def: '' }, // JSON, managed from the Home editor
   kioskPinHash: { env: 'KIOSK_PIN_HASH', def: '', secret: true },
   choreApproval: { env: 'CHORE_APPROVAL', def: 'kids' }, // off | kids | all
-  smtpHost: { env: 'SMTP_HOST', def: '' },
-  smtpPort: { env: 'SMTP_PORT', def: 587 },
-  smtpSecurity: { env: 'SMTP_SECURITY', def: 'starttls' }, // starttls | tls | none
-  smtpUser: { env: 'SMTP_USER', def: '' },
-  smtpPassword: { env: 'SMTP_PASSWORD', def: '', secret: true },
-  smtpFrom: { env: 'SMTP_FROM', def: '' },
-  ntfyUrl: { env: 'NTFY_URL', def: 'https://ntfy.sh' },
-  ntfyTopic: { env: 'NTFY_TOPIC', def: '' },
-  ntfyToken: { env: 'NTFY_TOKEN', def: '', secret: true },
+  mailjetApiKey: { env: 'MAILJET_API_KEY', def: '', secret: true },
+  mailjetSecretKey: { env: 'MAILJET_SECRET_KEY', def: '', secret: true },
+  mailFromEmail: { env: 'MAIL_FROM_EMAIL', def: '' }, // must be a sender address verified in Mailjet
+  mailFromName: { env: 'MAIL_FROM_NAME', def: '' },
   pushoverAppToken: { env: 'PUSHOVER_APP_TOKEN', def: '', secret: true },
   pushoverUserKey: { env: 'PUSHOVER_USER_KEY', def: '', secret: true }, // bcrypt hash of the kiosk PIN, set in Settings → Kiosk screens
 };

@@ -341,49 +341,43 @@ export function AppSettings({ section }: { section: AppSection }) {
           />
           <SettingsSection
             data={d}
-            title="Email and text messages"
-            status={d.settings.smtpHost?.value ? { ok: true, text: 'Set up' } : { ok: false, text: 'Not set up' }}
+            title="Email and texts (Mailjet)"
+            status={d.settings.mailjetApiKey?.isSet && d.settings.mailFromEmail?.value ? { ok: true, text: 'Set up' } : { ok: false, text: 'Not set up' }}
             intro={
-              <p className="muted small">
-                Approval requests are emailed to each head of household (they can turn this off, or add a phone number for texts, under{' '}
-                <strong>Settings → Screen &amp; alerts</strong>). Use your own mail server, or a service like Gmail (with an app password), Fastmail or SMTP2GO.
-              </p>
+              <>
+                <p className="muted small">
+                  Approval requests are emailed through <a href="https://www.mailjet.com" target="_blank" rel="noreferrer">Mailjet</a> (the free plan is plenty). Texts go through the same
+                  account to each parent's email-to-text address. Parents choose what they get under <strong>Settings → Screen &amp; alerts</strong>.
+                </p>
+                <ol className="steps small">
+                  <li>In Mailjet, open <strong>Account settings → API key management</strong> and copy the API key and secret key.</li>
+                  <li>
+                    Under <strong>Senders &amp; domains</strong>, add and verify the address you want to send from (Mailjet emails it a confirmation link).
+                  </li>
+                  <li>Paste them below, save, and send a test.</li>
+                </ol>
+              </>
             }
             fields={[
-              { key: 'smtpHost', label: 'Mail server (SMTP)', kind: 'text', placeholder: 'smtp.gmail.com' },
-              { key: 'smtpPort', label: 'Port', kind: 'number', placeholder: '587' },
-              {
-                key: 'smtpSecurity',
-                label: 'Security',
-                kind: 'select',
-                options: [
-                  { value: 'starttls', label: 'STARTTLS (usually port 587)' },
-                  { value: 'tls', label: 'SSL/TLS (usually port 465)' },
-                  { value: 'none', label: 'None (local relay only)' },
-                ],
-              },
-              { key: 'smtpUser', label: 'Username', kind: 'text', placeholder: 'you@gmail.com' },
-              { key: 'smtpPassword', label: 'Password or app password', kind: 'secret' },
-              { key: 'smtpFrom', label: 'Send from', kind: 'text', placeholder: 'Hardy Hub <you@gmail.com>' },
+              { key: 'mailjetApiKey', label: 'Mailjet API key', kind: 'secret' },
+              { key: 'mailjetSecretKey', label: 'Mailjet secret key', kind: 'secret' },
+              { key: 'mailFromEmail', label: 'Send from (verified in Mailjet)', kind: 'text', placeholder: 'hub@hardynetworks.net' },
+              { key: 'mailFromName', label: 'Sender name', kind: 'text', placeholder: 'Hardy Hub' },
             ]}
             test={{ label: 'Send a test', run: () => api<TestResult>('/admin/notifications/test', 'POST') }}
             footerNote="Save first, then send a test."
           />
           <SettingsSection
             data={d}
-            title="Phone push notifications"
-            status={d.settings.ntfyTopic?.value || d.settings.pushoverAppToken?.isSet ? { ok: true, text: 'Set up' } : { ok: false, text: 'Not set up' }}
+            title="Phone push notifications (Pushover)"
+            status={d.settings.pushoverAppToken?.isSet ? { ok: true, text: 'Set up' } : { ok: false, text: 'Optional' }}
             intro={
               <p className="muted small">
-                <strong>ntfy</strong> (free, and you can self-host it): install the ntfy app, subscribe to your topic, and approval requests arrive with{' '}
-                <strong>Approve / Deny</strong> buttons. Pick a long, hard-to-guess topic name, or use your own ntfy server with an access token. Your phone must be able to reach
-                FamilyHub (on your home network or VPN) for the buttons to work. <strong>Pushover</strong> (one-time purchase): paste your app token and user or group key.
+                Optional. <a href="https://pushover.net" target="_blank" rel="noreferrer">Pushover</a> (one-time app purchase) sends an instant notification that opens the approval page.
+                Create an application in Pushover for the app token, and use your user key (or a group key to reach both parents).
               </p>
             }
             fields={[
-              { key: 'ntfyUrl', label: 'ntfy server', kind: 'url', placeholder: 'https://ntfy.sh' },
-              { key: 'ntfyTopic', label: 'ntfy topic', kind: 'text', placeholder: 'hardy-hub-chores-8f3k2' },
-              { key: 'ntfyToken', label: 'ntfy access token (optional)', kind: 'secret' },
               { key: 'pushoverAppToken', label: 'Pushover app token', kind: 'secret' },
               { key: 'pushoverUserKey', label: 'Pushover user or group key', kind: 'secret' },
             ]}

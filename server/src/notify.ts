@@ -1,8 +1,7 @@
 /**
- * Parent notifications: email (your own SMTP server), texts through a carrier's email-to-text
- * address, and phone push notifications through ntfy or Pushover.
+ * Parent notifications: email through Mailjet, texts through a carrier's email-to-text address
+ * (also sent by Mailjet), and phone push notifications through Pushover.
  */
-import nodemailer from 'nodemailer';
 import type { UserRow } from './auth';
 import { q } from './db';
 import { getSetting } from './settings';
@@ -18,47 +17,33 @@ export interface ParentAlert {
   message: string;
   /** Link that opens the approval page. */
   url?: string;
-  /** Links that approve / deny straight from a push notification (POST). */
-  approveUrl?: string;
-  denyUrl?: string;
 }
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
-export function smtpConfigured() {
-  return !!getSetting('smtpHost') && !!getSetting('smtpFrom');
+export function mailConfigured() {
+  return !!getSetting('mailjetApiKey') && !!getSetting('mailjetSecretKey') && !!getSetting('mailFromEmail');
 }
 
+/** Send through Mailjet's Send API v3.1 (https://dev.mailjet.com/email/guides/send-api-v31/). */
 async function sendMail(to: string[], subject: string, text: string, html?: string) {
-  const security = getSetting('smtpSecurity');
-  const transport = nodemailer.createTransport({
-    host: getSetting('smtpHost'),
-    port: Number(getSetting('smtpPort')) || 587,
-    secure: security === 'tls',
-    requireTLS: security === 'starttls',
-    ignoreTLS: security === 'none',
-    auth: getSetting('smtpUser') ? { user: getSetting('smtpUser'), pass: getSetting('smtpPassword') } : undefined,
-    connectionTimeout: 15_000,
-    greetingTimeout: 15_000,
-  });
-  await transport.sendMail({ from: getSetting('smtpFrom'), to, subject, text, html });
-}
-
-async function sendNtfy(a: ParentAlert) {
-  const base = getSetting('ntfyUrl').replace(/\/+$/, '');
-  const topic = getSetting('ntfyTopic');
-  const actions: any[] = [];
-  if (a.approveUrl) actions.push({ action: 'http', label: 'Approve', url: a.approveUrl, method: 'POST', clear: true });
-  if (a.denyUrl) actions.push({ action: 'http', label: 'Deny', url: a.denyUrl, method: 'POST', clear: true });
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (getSetting('ntfyToken')) headers.Authorization = `Bearer ${getSetting('ntfyToken')}`;
-  const r = await fetch(base + '/', {
+  const auth = Buffer.from(`${getSetting('mailjetApiKey')}:${getSetting('mailjetSecretKey')}`).toString('base64');
+  const from = { Email: getSetting('mailFromEmail'), Name: getSetting('mailFromName') || getSetting('familyName') || getSetting('appName') };
+  // One message per recipient, so parents don't see each other's addresses.
+  const Messages = to.map((email) => ({ From: from, To: [{ Email: email }], Subject: subject || ' ', TextPart: text, ...(html ? { HTMLPart: html } : {}) }));
+  const r = await fetch('https://api.mailjet.com/v3.1/send', {
     method: 'POST',
-    headers,
-    body: JSON.stringify({ topic, title: a.title, message: a.message, tags: ['broom'], priority: 4, click: a.url, actions }),
-    signal: AbortSignal.timeout(10_000),
+    headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ Messages }),
+    signal: AbortSignal.timeout(15_000),
   });
-  if (!r.ok) throw new Error(`ntfy answered HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
+  const j: any = await r.json().catch(() => ({}));
+  if (r.status === 401) throw new Error('Mailjet rejected the API key / secret key');
+  const errors = (j.Messages ?? []).flatMap((m: any) => (m.Status === 'error' ? m.Errors ?? [] : []));
+  if (!r.ok || errors.length) {
+    const msg = errors.map((e: any) => e.ErrorMessage).filter(Boolean).join('; ') || j.ErrorMessage || `HTTP ${r.status}`;
+    throw new Error(/sender|from/i.test(msg) ? `${msg} (the "Send from" address must be verified in Mailjet → Senders & domains)` : msg);
+  }
 }
 
 async function sendPushover(a: ParentAlert) {
@@ -95,7 +80,7 @@ async function parents() {
 export async function notifyParents(a: ParentAlert, only?: UserRow[]): Promise<Channel[]> {
   const out: Channel[] = [];
   const people = only ?? (await parents());
-  if (smtpConfigured()) {
+  if (mailConfigured()) {
     const emails = people.filter((p) => p.email && p.prefs?.notifyEmail !== false).map((p) => p.email!);
     if (emails.length) {
       try {
@@ -116,14 +101,6 @@ export async function notifyParents(a: ParentAlert, only?: UserRow[]): Promise<C
       }
     }
   }
-  if (getSetting('ntfyTopic')) {
-    try {
-      await sendNtfy(a);
-      out.push({ channel: 'ntfy', ok: true, message: `Sent to topic ${getSetting('ntfyTopic')}` });
-    } catch (e: any) {
-      out.push({ channel: 'ntfy', ok: false, message: e.cause?.code ?? e.message });
-    }
-  }
   if (getSetting('pushoverAppToken') && getSetting('pushoverUserKey')) {
     try {
       await sendPushover(a);
@@ -142,7 +119,7 @@ export async function sendTestNotifications(user: UserRow) {
     [user],
   );
   if (!results.length) {
-    return { ok: false, message: 'Nothing is set up yet: add an email server, an ntfy topic or Pushover keys, and save.', results };
+    return { ok: false, message: 'Nothing is set up yet: add your Mailjet keys and sender address (or Pushover keys), and save.', results };
   }
   return { ok: results.every((r) => r.ok), message: results.map((r) => `${r.channel}: ${r.ok ? '✓ ' : '✗ '}${r.message}`).join('\n'), results };
 }

@@ -120,27 +120,10 @@ const Patch = z
     doorbellPopupSeconds: z.number().int().min(5).max(300).nullable().optional(),
     familyName: str(80),
     choreApproval: z.enum(['off', 'kids', 'all']).nullable().optional(),
-    smtpHost: str(300),
-    smtpPort: z.number().int().min(1).max(65535).nullable().optional(),
-    smtpSecurity: z.enum(['starttls', 'tls', 'none']).nullable().optional(),
-    smtpUser: str(300),
-    smtpPassword: z.string().max(1000).nullable().optional(),
-    smtpFrom: str(300),
-    ntfyUrl: z
-      .string()
-      .trim()
-      .max(300)
-      .refine((v) => v === '' || /^https?:\/\//.test(v), 'must start with http:// or https://')
-      .nullable()
-      .optional(),
-    ntfyTopic: z
-      .string()
-      .trim()
-      .max(64)
-      .refine((v) => v === '' || /^[A-Za-z0-9_-]+$/.test(v), 'letters, numbers, - and _ only')
-      .nullable()
-      .optional(),
-    ntfyToken: z.string().max(500).nullable().optional(),
+    mailjetApiKey: z.string().trim().max(200).nullable().optional(),
+    mailjetSecretKey: z.string().trim().max(200).nullable().optional(),
+    mailFromEmail: z.union([z.literal(''), z.string().trim().email().max(200)]).nullable().optional(),
+    mailFromName: str(100),
     pushoverAppToken: z.string().max(100).nullable().optional(),
     pushoverUserKey: z.string().max(100).nullable().optional(),
     camerasTileQuality: z.enum(['high', 'medium', 'low']).nullable().optional(),

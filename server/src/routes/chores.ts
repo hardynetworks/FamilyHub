@@ -170,8 +170,6 @@ choresRouter.post('/:id/toggle', async (req, res) => {
       title: `${name} finished a chore`,
       message: `${name} says "${choreName}" is done${chore.points ? ` (+${chore.points} point${chore.points === 1 ? '' : 's'})` : ''}. Approve it?`,
       url: `${base}/approve/${token}`,
-      approveUrl: `${base}/approve/${token}/approve`,
-      denyUrl: `${base}/approve/${token}/deny`,
     }).catch((e) => console.warn('Approval notification failed:', e.message));
   }
   res.json({ ok: true, pending });

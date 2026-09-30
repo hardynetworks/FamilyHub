@@ -312,16 +312,20 @@ When a child marks a chore done, it shows **⏳ Waiting for OK**, and every head
 
 **Ways to approve:**
 - **In the app:** a **Waiting for approval** card at the top of the Chores page. Parents ticking chores on their own device approve them straight away.
-- **Email:** the email has **Approve** and **Deny** buttons, which open a one-tap confirmation page. No sign-in is needed, and each link works once, for 14 days.
-- **Text message:** sent through your carrier's email-to-text address.
-- **Phone push:** [ntfy](https://ntfy.sh) shows **Approve / Deny** buttons right in the notification. [Pushover](https://pushover.net) opens the approval page.
+- **Email** (sent through [Mailjet](https://www.mailjet.com)): the email has **Approve** and **Deny** buttons, which open a one-tap confirmation page. No sign-in is needed, and each link works once, for 14 days.
+- **Text message:** sent through Mailjet to your carrier's email-to-text address.
+- **Phone push (optional):** [Pushover](https://pushover.net) opens the approval page.
 
 **Set up (head of household):**
-1. **Settings → App settings → Notifications:**
+1. **In Mailjet** (the free plan is enough):
+   - Copy the API key and secret key from **Account settings → API key management**.
+   - Verify the address you'll send from under **Senders & domains**.
+2. **Settings → App settings → Notifications:**
    - Choose who needs approval: children (the default), everyone, or nobody.
-   - Enter your email (SMTP) server details, and/or an ntfy topic or Pushover keys.
+   - Paste the Mailjet keys and the "Send from" address.
+   - Optionally, add Pushover keys.
    - Use **Send a test** to check it works.
-2. **Settings → Screen & alerts → Chore approval alerts:** each parent chooses whether to get emails, and can add an email-to-text address for texts (e.g. `5551234567@vtext.com`).
+3. **Settings → Screen & alerts → Chore approval alerts:** each parent chooses whether to get emails, and can add an email-to-text address for texts (e.g. `5551234567@vtext.com`).
 
 > The links in notifications use your **Public address** (Settings → App settings → General). The phone or computer you approve from must be able to reach it, for example over your VPN.
 

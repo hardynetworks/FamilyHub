@@ -656,7 +656,7 @@ function AlertPrefsCard() {
   return (
     <section className="card">
       <h2>Chore approval alerts</h2>
-      <p className="muted small">When a child marks a chore done, you'll get a message with Approve / Not yet buttons. Push notifications (ntfy, Pushover) are set up under App settings → Notifications.</p>
+      <p className="muted small">When a child marks a chore done, you'll get a message with Approve / Not yet buttons. Email and texts are sent through Mailjet, set up under App settings → Notifications.</p>
       <div className="form">
         <label className="toggle">
           <input type="checkbox" checked={me.prefs.notifyEmail !== false} disabled={!me.email} onChange={(e) => save({ notifyEmail: e.target.checked })} /> Email me
@@ -667,7 +667,7 @@ function AlertPrefsCard() {
           hint={
             <>
               Your number at your carrier's gateway, e.g. <code>5551234567@vtext.com</code> (Verizon), <code>@tmomail.net</code> (T-Mobile), <code>@txt.att.net</code> (AT&amp;T). Some
-              carriers are phasing this out; push notifications are more reliable. Leave empty for no texts.
+              carriers are phasing this out. Leave empty for no texts.
             </>
           }
         >
