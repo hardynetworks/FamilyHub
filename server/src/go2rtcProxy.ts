@@ -32,7 +32,8 @@ export function attachGo2rtcProxy(server: Server, sessionMiddleware: RequestHand
     // Reuse the Express session to authenticate the upgrade request.
     sessionMiddleware(req as any, {} as any, async () => {
       const userId = (req as any).session?.userId;
-      const user = userId ? await one<UserRow>('select * from users where id = $1 and can_login', [userId]).catch(() => null) : null;
+      const onScreen = !!(req as any).session?.deviceId; // kiosk screens may be linked to a profile without its own login
+      const user = userId ? await one<UserRow>('select * from users where id = $1 and (can_login or $2)', [userId, onScreen]).catch(() => null) : null;
       if (!user) return reject(socket, 401, 'Unauthorized');
 
       wss.handleUpgrade(req, socket, head, (client) => {

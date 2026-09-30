@@ -91,6 +91,11 @@ export function LoginPage({ status }: { status: AuthStatus }) {
         )}
         {status.needsSetup && !status.localLogin && <p className="muted small">The first person to sign in becomes the family admin.</p>}
         {setup && <p className="muted small">Authentik and Google Calendar can be set up afterwards in Settings → App settings.</p>}
+        {!status.needsSetup && (
+          <p className="muted small">
+            Wall tablet or Raspberry Pi? <a href="/kiosk">Set this screen up as a kiosk</a>
+          </p>
+        )}
       </div>
     </div>
   );

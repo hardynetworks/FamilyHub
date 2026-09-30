@@ -160,6 +160,26 @@ alter table users add column member_type text not null default 'adult' check (me
 update users set member_type = 'child' where not can_login and role = 'member';
 `,
   },
+  {
+    id: '004_devices',
+    sql: `
+create table devices (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  user_id uuid not null references users(id) on delete cascade,
+  token_hash text unique,
+  pair_code_hash text unique,
+  pair_expires timestamptz,
+  options jsonb not null default '{}'::jsonb,
+  created_by uuid references users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  paired_at timestamptz,
+  last_seen timestamptz,
+  last_ip text,
+  user_agent text
+);
+`,
+  },
 ];
 
 export async function migrate(): Promise<void> {

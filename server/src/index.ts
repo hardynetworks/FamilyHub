@@ -20,6 +20,7 @@ import { membersRouter } from './routes/members';
 import { photosRouter } from './routes/photos';
 import { weatherRouter } from './routes/weather';
 import { homeRouter } from './routes/home';
+import { devicesAdminRouter, kioskRouter } from './routes/kiosk';
 import { camerasRouter, go2rtcRouter } from './routes/cameras';
 import { attachGo2rtcProxy } from './go2rtcProxy';
 import { startEvents, startLiveVideoManager } from './protect';
@@ -72,6 +73,8 @@ async function main() {
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
   app.use('/api/auth', authRouter);
   app.use('/api/google', googleRouter);
+  app.use('/api/kiosk', kioskRouter);
+  app.use('/api/admin/devices', requireAdmin, devicesAdminRouter);
   app.use('/api/admin', requireAdmin, adminRouter);
   app.use('/api/members', requireAuth, membersRouter);
   app.use('/api/events', requireAuth, eventsRouter);

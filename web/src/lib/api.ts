@@ -81,6 +81,35 @@ export interface AuthStatus {
   oidc: { enabled: boolean; label: string };
   google: { enabled: boolean };
   timezone: string;
+  /** Changes when the server restarts; kiosk screens reload when it does. */
+  version?: string;
+  /** Set when this browser is a paired kiosk screen. */
+  device?: KioskDevice | null;
+  kioskPinSet?: boolean;
+}
+
+export type KioskPage = 'calendar' | 'lists' | 'chores' | 'meals';
+export interface KioskOptions {
+  pages: KioskPage[];
+  returnHomeSeconds: number;
+  hideCursor: boolean;
+  reloadNightly: boolean;
+}
+export interface KioskDevice {
+  id: string;
+  name: string;
+  options: KioskOptions;
+}
+export interface AdminDevice extends KioskDevice {
+  userId: string;
+  paired: boolean;
+  pairingOpen: boolean;
+  pairExpires: string | null;
+  pairedAt: string | null;
+  lastSeen: string | null;
+  lastIp: string | null;
+  userAgent: string | null;
+  createdAt: string;
 }
 
 export interface CalEvent {

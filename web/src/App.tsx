@@ -1,7 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useState } from 'react';
-import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
+import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { DoorbellPopup } from './components/Cameras';
+import { KioskPairPage, KioskShell } from './components/Kiosk';
 import { resolveLayout, useApplyTheme, useHomeLayout } from './lib/layout';
 import { Avatar, Icon, Spinner } from './components/ui';
 import { api } from './lib/api';
@@ -25,6 +26,7 @@ const NAV = [
 
 export function App() {
   const { data: status, isLoading, error } = useAuthStatus();
+  const { pathname } = useLocation();
   const [toasts, setToasts] = useState<{ id: number; msg: string; kind: string }[]>([]);
   const toast: ToastFn = useCallback((msg, kind = 'info') => {
     const id = Date.now() + Math.random();
@@ -39,6 +41,8 @@ export function App() {
   let body;
   if (isLoading) body = <div className="center-screen"><Spinner /></div>;
   else if (error || !status) body = <div className="center-screen">Can't reach the server. Retrying…</div>;
+  else if (pathname.startsWith('/kiosk') && !status.device) body = <KioskPairPage status={status} />;
+  else if (status.user && status.device) body = <KioskShell status={status} />;
   else if (!status.user) body = <LoginPage status={status} />;
   else body = <Shell appName={status.appName} />;
 

@@ -53,6 +53,7 @@ export interface Settings {
   webrtcMode: string;
   webrtcLanAddress: string;
   webrtcPort: number;
+  kioskPinHash: string;
 }
 export type SettingKey = keyof Settings;
 
@@ -108,6 +109,7 @@ export const DEFS: Record<SettingKey, Def> = {
   doorbellPopupSeconds: { env: 'DOORBELL_POPUP_SECONDS', def: 30 },
   familyName: { env: 'FAMILY_NAME', def: '' },
   homeDefaultLayout: { env: 'HOME_DEFAULT_LAYOUT', def: '' }, // JSON, managed from the Home editor
+  kioskPinHash: { env: 'KIOSK_PIN_HASH', def: '', secret: true }, // bcrypt hash of the kiosk PIN, set in Settings → Kiosk screens
 };
 
 export const SETTING_KEYS = Object.keys(DEFS) as SettingKey[];

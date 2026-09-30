@@ -7,6 +7,7 @@ import { Empty, Field, Icon, Modal } from '../components/ui';
 import { useWeather } from '../components/Weather';
 import { api } from '../lib/api';
 import { useMe, useToast } from '../lib/hooks';
+import { useKiosk } from '../lib/kiosk';
 import {
   ACCENTS,
   HomeLayout,
@@ -40,6 +41,7 @@ const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n
 
 export function HomePage() {
   const me = useMe();
+  const kiosk = useKiosk();
   const qc = useQueryClient();
   const toast = useToast();
   const layoutQ = useHomeLayout();
@@ -325,7 +327,7 @@ export function HomePage() {
       </div>
       </div>
 
-      {!editing && (
+      {!editing && (!kiosk.active || kiosk.unlocked) && (
         <button className="customize-fab" onClick={startEditing} title="Customize this page">
           <Icon name="edit" size={16} /> Customize
         </button>

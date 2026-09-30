@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { AppSettings } from '../components/AppSettings';
+import { KioskAdmin } from '../components/KioskAdmin';
 import { useCameras } from '../components/Cameras';
 import { Avatar, COLOR_CHOICES, EMOJI_CHOICES, Field, Icon, Modal } from '../components/ui';
 import { GoogleStatus, Member, api } from '../lib/api';
@@ -17,6 +18,7 @@ type TabId =
   | 'app-weather'
   | 'app-photos'
   | 'app-cameras'
+  | 'app-kiosk'
   | 'app-security';
 
 interface TabDef {
@@ -52,6 +54,7 @@ const GROUPS: { title: string; adminOnly?: boolean; tabs: TabDef[] }[] = [
       { id: 'app-weather', label: 'Weather', icon: 'sun' },
       { id: 'app-photos', label: 'Photos', icon: 'image' },
       { id: 'app-cameras', label: 'Cameras', icon: 'camera' },
+      { id: 'app-kiosk', label: 'Kiosk screens', icon: 'lock' },
       { id: 'app-security', label: 'Security', icon: 'lock' },
     ],
   },
@@ -150,6 +153,7 @@ export function SettingsPage({ onLogout }: { onLogout: () => void }) {
           {tab === 'app-weather' && <AppSettings section="weather" />}
           {tab === 'app-photos' && <AppSettings section="photos" />}
           {tab === 'app-cameras' && <AppSettings section="cameras" />}
+          {tab === 'app-kiosk' && <KioskAdmin />}
           {tab === 'app-security' && <AppSettings section="security" />}
         </div>
       </div>

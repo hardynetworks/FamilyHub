@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { baseUrl, config, isValidTimezone } from './config';
 import { getSetting, isLockedByEnv, onSettingsChange, saveSettings } from './settings';
 import { one, q } from './db';
+import { BOOT_ID, DEVICE_COOKIE, DeviceRow, deviceOptions, hashToken, readCookie, touchDevice } from './devices';
 import { HttpError, decodeJwtPayload, parse, randomToken } from './util';
 
 export interface UserRow {
@@ -25,6 +26,8 @@ export interface UserRow {
 declare module 'express-session' {
   interface SessionData {
     userId?: string;
+    /** Set when this session belongs to a paired kiosk screen. */
+    deviceId?: string;
     oidc?: { state: string; nonce: string; verifier: string };
     googleState?: string;
   }
@@ -35,6 +38,8 @@ declare global {
   namespace Express {
     interface Request {
       user?: UserRow;
+      /** The kiosk screen making this request, if any. */
+      device?: DeviceRow;
     }
   }
 }
@@ -62,12 +67,45 @@ export function publicUser(u: UserRow) {
   };
 }
 
-export async function loadUser(req: Request, _res: Response, next: NextFunction) {
+export async function loadUser(req: Request, res: Response, next: NextFunction) {
+  // Kiosk screen: the session is tied to a device that must still exist and be paired.
+  if (req.session.deviceId) {
+    const d = await one<DeviceRow>('select * from devices where id = $1 and token_hash is not null', [req.session.deviceId]);
+    if (d) {
+      req.device = d;
+      req.session.userId = d.user_id; // follows the member the screen is linked to, even if it changes
+    } else {
+      delete req.session.deviceId;
+      delete req.session.userId;
+    }
+  }
+  // No session (expired, or the server's sessions were cleared): sign a paired screen back in from its device cookie.
+  if (!req.session.userId) {
+    const token = readCookie(req, DEVICE_COOKIE);
+    if (token) {
+      const d = await one<DeviceRow>('select * from devices where token_hash = $1', [hashToken(token)]);
+      if (d) {
+        req.device = d;
+        req.session.deviceId = d.id;
+        req.session.userId = d.user_id;
+      } else {
+        res.clearCookie(DEVICE_COOKIE, { path: '/' });
+      }
+    }
+  }
   if (req.session.userId) {
     const u = await one<UserRow>('select * from users where id = $1', [req.session.userId]);
-    if (u && u.can_login) req.user = u;
-    else delete req.session.userId;
+    // A screen may be linked to a profile that can't sign in itself (e.g. "Kitchen screen").
+    // Kiosk screens never get head-of-household powers, whoever they are linked to.
+    if (u && req.device) req.user = { ...u, role: 'member' };
+    else if (u && u.can_login) req.user = u;
+    else {
+      delete req.session.userId;
+      delete req.session.deviceId;
+      req.device = undefined;
+    }
   }
+  if (req.device) touchDevice(req, req.device);
   next();
 }
 
@@ -78,6 +116,7 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction) {
 
 export function requireAdmin(req: Request, _res: Response, next: NextFunction) {
   if (!req.user) throw new HttpError(401, 'Not signed in');
+  if (req.device) throw new HttpError(403, 'Not available on a kiosk screen');
   if (req.user.role !== 'admin') throw new HttpError(403, 'Admins only');
   next();
 }
@@ -92,11 +131,12 @@ async function nextColor(): Promise<string> {
   return MEMBER_COLORS[n % MEMBER_COLORS.length];
 }
 
-function login(req: Request, userId: string): Promise<void> {
+export function login(req: Request, userId: string, deviceId?: string): Promise<void> {
   return new Promise((resolve, reject) => {
     req.session.regenerate((err) => {
       if (err) return reject(err);
       req.session.userId = userId;
+      if (deviceId) req.session.deviceId = deviceId;
       req.session.save((e) => (e ? reject(e) : resolve()));
     });
   });
@@ -104,7 +144,7 @@ function login(req: Request, userId: string): Promise<void> {
 
 // ---- Simple in-memory login rate limiter ----
 const attempts = new Map<string, { n: number; reset: number }>();
-function rateLimit(key: string) {
+export function rateLimit(key: string) {
   const now = Date.now();
   const a = attempts.get(key);
   if (!a || a.reset < now) {
@@ -156,6 +196,9 @@ authRouter.get('/status', async (req, res) => {
     oidc: { enabled: config.oidc.enabled, label: config.oidc.label },
     google: { enabled: config.google.enabled },
     timezone: config.timezone,
+    version: BOOT_ID,
+    device: req.device ? { id: req.device.id, name: req.device.name, options: deviceOptions(req.device) } : null,
+    kioskPinSet: !!getSetting('kioskPinHash'),
   });
 });
 
@@ -202,6 +245,7 @@ authRouter.post('/login', async (req, res) => {
 });
 
 authRouter.post('/logout', (req, res) => {
+  if (req.device) throw new HttpError(403, 'This is a kiosk screen. Use the kiosk menu (with the PIN) to sign it out.');
   req.session.destroy(() => {
     res.clearCookie('familyhub.sid');
     res.json({ ok: true });

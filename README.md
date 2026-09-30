@@ -136,6 +136,22 @@ FamilyHub can show your UniFi Protect cameras on the Home page and pop up the do
 
 **How live video works:** browsers can't play Protect's RTSPS streams, so the bundled `go2rtc` container converts them into video the browser can play. FamilyHub passes the video through to signed-in users. go2rtc's control API is never published; only its WebRTC media port (8555) is, and that only carries video that FamilyHub has already set up for a signed-in user. If you use a reverse proxy, make sure **WebSocket support** is enabled for FamilyHub; live video, like the doorbell, depends on it.
 
+## Kiosk screens (wall tablets, Raspberry Pi)
+
+Turn a tablet or a Raspberry Pi display into a family dashboard that stays signed in on its own.
+
+1. A head of household opens **Settings → Kiosk screens → Add a screen**, picks whose Home page it shows and which pages it can open, and gets a one-time pairing code (valid 30 minutes).
+2. On the screen, open `https://<your FamilyHub>/kiosk` and enter the code (or open the pairing link, which pairs straight away).
+
+A kiosk screen:
+
+- Opens full screen ("Tap anywhere to start" the first time), keeps the display awake (Screen Wake Lock, needs HTTPS) and hides the sidebar and Settings.
+- Goes back to Home after a chosen idle time, shows a "Reconnecting…" banner if the server can't be reached and refreshes itself when it's back, reloads after app updates and once a night.
+- Stays signed in with its own device token (an httpOnly cookie). No one's password is stored on it, and it never gets head-of-household access, even when it shows a head of household's Home page. Remove the screen in Settings to sign it out instantly.
+- Has a small lock button that asks for the **kiosk PIN** (set it on the same Settings tab). After the PIN you can unlock all pages for 5 minutes, customize Home, reload, or sign the screen out.
+
+To stop people leaving the browser, lock the device to it: **App pinning** on Android (after "Add to Home screen"), **Guided Access** on iPad, or on a Raspberry Pi start Chromium with `chromium-browser --kiosk --noerrdialogs --disable-infobars https://<your FamilyHub>/kiosk` and turn off screen blanking in `raspi-config`.
+
 ## Weather
 
 The Home page shows the current conditions and a 6-day forecast, and the photo slideshow shows the temperature in the corner. The data comes from [Open-Meteo](https://open-meteo.com), which is free and needs no API key; FamilyHub fetches it on the server and caches it for 15 minutes.
