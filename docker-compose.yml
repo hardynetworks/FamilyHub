@@ -18,7 +18,7 @@ services:
       db:
         condition: service_healthy
 
-  # Live camera video relay (UniFi Protect RTSPS -> browser). No ports are published:
+  # Live camera video relay (UniFi Protect RTSPS -> browser). Its API stays private:
   # FamilyHub talks to it on the internal network and proxies the player to signed-in users.
   go2rtc:
     image: alexxit/go2rtc:latest

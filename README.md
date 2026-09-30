@@ -1,222 +1,508 @@
 # FamilyHub
 
-A self-hosted family organizer: shared calendar with **two-way Google Calendar sync**, shopping and to-do lists, chores with points, and a weekly meal planner with a recipe box. It runs as a responsive web app / PWA, so you can install it on phones or put it on a wall-mounted tablet. Everything runs in Docker (Node + Postgres).
+A self-hosted family organizer for your home server. It gives the whole family:
 
-Sign-in options: **Authentik (OIDC)** and/or local email + password accounts.
+- a shared calendar with **two-way Google Calendar sync**
+- shopping and to-do lists
+- chores with points
+- a meal planner and recipe box
+- a customizable Home dashboard with weather, a family photo slideshow and **UniFi Protect cameras**
+- **kiosk mode** for wall tablets and Raspberry Pi screens
+
+It runs in Docker (Node, Postgres and go2rtc). You use it as a web app or an installable PWA on phones, tablets and computers.
+
+Sign-in options: **Authentik (OIDC)** and/or local email + password accounts. Everything, including API keys and secrets, is set up from inside the app. The only thing you have to put in a config file is a database password.
+
+---
+
+## Screenshots
+
+These use a demo install filled with a made-up family (the "Parkers"), not real data.
+
+![Home dashboard](docs/screenshots/home.png)
+
+| Calendar | Chores |
+|---|---|
+| ![Calendar with daily weather](docs/screenshots/calendar.png) | ![Chores by person with weekly points](docs/screenshots/chores.png) |
+| **Lists** | **Meals** |
+| ![Shopping and to-do lists](docs/screenshots/lists.png) | ![Weekly meal planner](docs/screenshots/meals.png) |
+| **Kiosk mode on a wall tablet** | **Dark mode** |
+| ![Kiosk screen with big touch buttons](docs/screenshots/kiosk-tablet.png) | ![Home in dark mode](docs/screenshots/home-dark.png) |
+
+| Settings → Kiosk screens | On a phone |
+|---|---|
+| ![Managing kiosk screens and the PIN](docs/screenshots/settings-kiosk.png) | <img src="docs/screenshots/mobile-home.png" alt="Home on a phone" width="48%"> <img src="docs/screenshots/mobile-calendar.png" alt="Calendar agenda on a phone" width="48%"> |
+
+---
+
+## Contents
+
+- [Screenshots](#screenshots)
+- [Features](#features)
+- [Installation](#installation)
+  - [What you need](#what-you-need)
+  - [Step 1: Install Docker](#step-1-install-docker)
+  - [Step 2: Download FamilyHub](#step-2-download-familyhub)
+  - [Step 3: Set the database password](#step-3-set-the-database-password)
+  - [Step 4: Start FamilyHub](#step-4-start-familyhub)
+  - [Step 5: Create the first account](#step-5-create-the-first-account)
+  - [Step 6: Put it behind HTTPS (recommended)](#step-6-put-it-behind-https-recommended)
+  - [Step 7: Set up the extras](#step-7-set-up-the-extras)
+  - [Updating](#updating)
+  - [Troubleshooting](#troubleshooting)
+- [Authentik (OIDC) setup](#authentik-oidc-setup)
+- [Google Calendar setup (two-way sync)](#google-calendar-setup-two-way-sync)
+- [Customizing the Home page](#customizing-the-home-page)
+- [Family and roles](#family-and-roles)
+- [Cameras (UniFi Protect)](#cameras-unifi-protect)
+- [Kiosk screens (wall tablets, Raspberry Pi)](#kiosk-screens-wall-tablets-raspberry-pi)
+- [Weather](#weather)
+- [Photo slideshow (Home screensaver)](#photo-slideshow-home-screensaver)
+- [Configuration reference](#configuration-reference)
+- [Backups and restore](#backups-and-restore)
+- [Security notes](#security-notes)
+- [Development](#development)
+- [License](#license)
+
+---
 
 ## Features
 
 | Area | What you get |
 |---|---|
-| **Home** | Clock and greeting, the week's agenda, today's chores by person, today's meals, shopping list, open to-dos. Refreshes itself every minute, so it works well on a wall tablet. |
-| **Calendar** | Fills the window and resizes with it (agenda view on phones). Shows the daily weather forecast on each day. Month / week / day / agenda views, color-coded by family member, member filters, drag-to-move/resize, repeating events (daily, weekly, every 2 weeks, monthly, yearly, with an optional end date). |
-| **Google sync** | Each person connects their own Google account(s) and picks which calendars to sync and who each calendar belongs to. Google events show up in FamilyHub. Events created or edited in FamilyHub on a Google calendar are written to Google right away. Changes made in Google are pulled in every 5 minutes (configurable) or when you click **Sync now**. |
-| **Lists** | Multiple shopping and to-do lists. Paste several lines to add many items at once. Items can have an assignee and a due date. You can hide or clear completed items. |
-| **Chores** | Daily, specific-weekday, or one-time chores, assigned to a person or to "anyone". Tap to complete. Points feed a weekly leaderboard. |
-| **Meals** | Weekly planner (breakfast, lunch, dinner, snack) and a recipe box. You can send a recipe's ingredients, or the whole week's ingredients (de-duplicated), to a shopping list in one click. |
-| **Family** | Admins add members, including kids without logins, and set their colors and avatars. SSO users are matched to members by email. |
+| **Home** | A dashboard made of widgets that each person can rearrange and resize with a drag-and-drop editor. Widgets: greeting and clock, big clock, weather, cameras, coming up, today's chores, today's meals, shopping lists, to-dos and sticky notes. Colours, dark mode, text size and background can all be changed. |
+| **Calendar** | Month, week, day and agenda views that fill the window. Each day shows the weather forecast. Events are colour-coded by family member, and you can filter by member. Drag events to move or resize them. Repeating events are supported (daily, weekly, every 2 weeks, monthly, yearly), with an optional end date. |
+| **Google sync** | Each person connects their own Google account(s) and picks which calendars to show and who each one belongs to. Changes made in FamilyHub are written to Google right away. Changes made in Google are pulled in every 5 minutes, or on demand. |
+| **Lists** | Multiple shopping and to-do lists. Paste many lines to add many items at once. Items can have an assignee and a due date. |
+| **Chores** | Daily, specific-weekday or one-time chores, for one person or "anyone". Tap to complete. Points feed a weekly leaderboard. |
+| **Meals** | A weekly planner and a recipe box. Send a recipe's ingredients, or the whole week's, to a shopping list in one click. |
+| **Weather** | Current conditions and a forecast from Open-Meteo. It's free and needs no API key. |
+| **Photo slideshow** | After a minute with nobody touching the Home page, a full-screen slideshow starts. Photos come from Amazon Photos shared links and/or Immich. |
+| **Cameras** | UniFi Protect snapshots and live video on Home, low-latency WebRTC on your home network, and a doorbell pop-up on every screen when someone rings. |
+| **Kiosk screens** | Pair a wall tablet or Raspberry Pi with a one-time code. It stays signed in, runs full screen, keeps the display awake, recovers by itself and is locked with a PIN. |
+| **Family** | A head of household manages the family name, adults and children, their colours, avatars and logins. |
+| **Settings** | Everything is set up inside the app, in tabs: You, Family, Connections and App settings. Secrets are encrypted and never sent back to the browser. |
 
-## Quick start
+---
+
+## Installation
+
+These steps use **Ubuntu Server 22.04 or 24.04**. Any Linux machine that can run Docker works the same way, including a NAS or a Raspberry Pi 4/5 with 64-bit OS; the image is built for both amd64 and arm64.
+
+### What you need
+
+- A computer or VM that stays on: 2 CPU cores, 2 GB RAM and 10 GB of disk is plenty.
+- Docker Engine with the Compose plugin (step 1).
+- Optional, but recommended: a hostname and HTTPS through a reverse proxy (step 6), for example Nginx Proxy Manager, Traefik or Caddy. Phones need HTTPS to install the app, and wall screens need it to stay awake.
+
+### Step 1: Install Docker
+
+Skip this if `docker compose version` already works.
 
 ```bash
-git clone https://github.com/hardynetworks/FamilyHub.git && cd FamilyHub
-cp .env.example .env        # only POSTGRES_PASSWORD is required
-docker compose pull         # prebuilt image from ghcr.io (amd64 + arm64)
-docker compose up -d
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker $USER     # lets you run docker without sudo
+newgrp docker                     # or log out and back in
+docker compose version            # should print a version number
+```
+
+If you see **`permission denied while trying to connect to the docker API at unix:///var/run/docker.sock`**, the group change hasn't taken effect yet. Log out and back in (or run `newgrp docker`), or put `sudo` in front of the docker commands.
+
+### Step 2: Download FamilyHub
+
+```bash
+cd ~
+git clone https://github.com/hardynetworks/FamilyHub.git
+cd FamilyHub
+```
+
+If `git` is missing: `sudo apt install -y git`.
+
+### Step 3: Set the database password
+
+```bash
+cp .env.example .env
+openssl rand -base64 32          # copy the random password this prints
+nano .env                        # paste it after POSTGRES_PASSWORD=, then save (Ctrl+O, Enter, Ctrl+X)
+```
+
+`.env` should now contain a line like:
+
+```
+POSTGRES_PASSWORD=Zx8...your-random-password...Qk=
+```
+
+> Set the password **before** the first start and don't change it afterwards. The database remembers the password it was created with.
+
+Other optional settings in `.env`:
+
+| Variable | Default | What it does |
+|---|---|---|
+| `KINBOARD_PORT` | `3000` | The port FamilyHub is reachable on (`http://<server-ip>:3000`). |
+| `WEBRTC_PORT` | `8555` | The camera video port used for WebRTC. Only change it if 8555 is already taken. |
+| `TZ` | `UTC` | The household time zone. You can also set it on the setup screen. |
+
+### Step 4: Start FamilyHub
+
+```bash
+docker compose pull      # downloads the prebuilt images
+docker compose up -d     # starts FamilyHub, Postgres and the camera relay in the background
+docker compose ps        # all three should be "running" (the database shows "healthy")
 docker compose logs -f app
 ```
 
-To build from source instead of pulling, run `docker compose up -d --build`. To update later, run `git pull && docker compose pull && docker compose up -d`.
+When the log shows `FamilyHub listening on :3000`, press **Ctrl+C** to stop watching the logs; FamilyHub keeps running. It starts again on its own after a reboot.
 
-Open the app in a browser. The first screen creates the admin account and records the app's address and your time zone. Everything else is set up from inside the app, under **Settings → App settings** (admins only):
+Find the server's address with `hostname -I`, the first address shown, for example `192.168.1.20`.
 
-- **General:** app name, public address (App URL), household time zone
-- **Sign-in:** Authentik / OIDC details, the admin group, auto-creating members, and whether password sign-in is allowed
-- **Google Calendar:** OAuth client ID and secret, sync interval, and the sync window
+If you use the `ufw` firewall, open the ports:
 
-Each section shows the exact redirect URI to paste into Authentik or Google, and has a **Test** button that checks your details before you rely on them. Changes take effect right away; no restart is needed.
+```bash
+sudo ufw allow 3000/tcp   # the web app (not needed if only your reverse proxy on this server reaches it)
+sudo ufw allow 8555       # camera video over WebRTC, TCP and UDP (only if you use cameras)
+```
 
-The session secret and the encryption key are generated on first start and stored in the `familyhub-data` volume (`/data/secrets.json`). Client secrets and Google tokens are stored encrypted in the database. Secrets are never sent back to the browser; the form only shows whether one is saved.
+### Step 5: Create the first account
 
-The database schema is created and migrated automatically on startup.
+Open `http://<server-ip>:3000` in a browser. The first screen creates the **head of household** account (name, email and password). It also records the family name, the app's address and your time zone.
 
-> **First run:** until the first account is created, anyone who can reach the app can create it. Do that right away, before exposing the app more widely.
+> Do this right away. Until the first account exists, anyone who can reach the page can create it.
 
-### Reverse proxy
+### Step 6: Put it behind HTTPS (recommended)
 
-Put FamilyHub behind your usual proxy (Traefik, Caddy, NPM, etc.) at a hostname such as `family.example.com`, pointing at port 3000.
+Point a hostname such as `family.example.com` at your reverse proxy, and forward it to `http://<server-ip>:3000`. Then:
 
-- Set **Settings → App settings → Public address** to the URL your family uses (the setup screen fills it in from the address you first opened). OAuth redirect URIs are built from it.
-- The proxy must send `X-Forwarded-Proto` so cookies are marked `Secure` over HTTPS. Most proxies do this by default.
-- The app can stay VPN-only (e.g. behind NetBird). The OAuth redirects happen in the user's browser, so Google and Authentik never need to reach FamilyHub directly. The browser just needs to be able to reach both.
+1. **Turn on WebSocket support** for this host. Live camera video and the doorbell pop-up need it. In Nginx Proxy Manager it's the "Websockets Support" switch.
+2. Make sure the proxy sends `X-Forwarded-Proto`. Most do by default, and FamilyHub uses it to mark cookies `Secure` over HTTPS.
+3. In FamilyHub, open **Settings → App settings → General** and set **Public address** to the HTTPS URL your family uses. Sign-in and Google redirect addresses are built from it.
+
+FamilyHub can stay **VPN-only** (for example, behind NetBird or Tailscale). The Google and Authentik sign-in redirects happen in your browser, so those services never need to reach your server.
+
+### Step 7: Set up the extras
+
+Everything else is under **Settings** in the app. Each section explains itself and has a **Test** button:
+
+| What | Where | Guide |
+|---|---|---|
+| Family members, roles, family name | Settings → Family members | [Family and roles](#family-and-roles) |
+| Sign in with Authentik | Settings → App settings → Sign-in | [Authentik setup](#authentik-oidc-setup) |
+| Google Calendar sync | Settings → App settings → Google API, then each person under Settings → Google Calendar | [Google setup](#google-calendar-setup-two-way-sync) |
+| Weather location | Settings → App settings → Weather | [Weather](#weather) |
+| Photo slideshow | Settings → App settings → Photos | [Photo slideshow](#photo-slideshow-home-screensaver) |
+| UniFi Protect cameras | Settings → App settings → Cameras | [Cameras](#cameras-unifi-protect) |
+| Wall tablets and Raspberry Pi screens | Settings → App settings → Kiosk screens | [Kiosk screens](#kiosk-screens-wall-tablets-raspberry-pi) |
+| Home page layout | Home → Customize | [Customizing Home](#customizing-the-home-page) |
+
+**Install it on phones:** open FamilyHub in the browser. On an iPhone, tap Share → **Add to Home Screen**. On Android, Chrome offers **Install app** in its menu.
+
+### Updating
+
+```bash
+cd ~/FamilyHub
+git pull                 # gets the latest docker-compose.yml and docs
+docker compose pull      # gets the latest images
+docker compose up -d     # restarts with them
+docker image prune -f    # optional: removes old image layers
+```
+
+Database changes are applied automatically when the new version starts. Kiosk screens reload themselves after an update.
+
+### Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| `permission denied ... docker.sock` | See [Step 1](#step-1-install-docker): log out and back in, or use `sudo`. |
+| `Set POSTGRES_PASSWORD in .env` | You're not in the `FamilyHub` folder, or `.env` is missing the password (see Step 3). |
+| App keeps restarting; logs say `password authentication failed` | The password in `.env` was changed after the database was created. Put the original back. If this is a brand-new install with nothing to keep, reset with `docker compose down -v` (this **deletes all data**) and start again. |
+| Port 3000 or 8555 is already in use | Set `KINBOARD_PORT` or `WEBRTC_PORT` in `.env`, then `docker compose up -d`. |
+| "Can't reach the server" in the browser | Check `docker compose ps` and `docker compose logs app`, and that your firewall allows the port. |
+| Locked out after turning off password sign-in | Add `LOCAL_LOGIN_ENABLED=true` to `.env` and run `docker compose up -d`. |
+| Live camera video doesn't load behind a proxy | Turn on WebSocket support for the FamilyHub host. |
+| Google sync stops after 7 days | Your Google OAuth app is still in "Testing". Publish it (see [Google setup](#google-calendar-setup-two-way-sync)). |
+| Looking at what went wrong | `docker compose logs --tail=200 app` (or `go2rtc`, or `db`). |
+
+---
 
 ## Authentik (OIDC) setup
 
-1. In FamilyHub, open **Settings → App settings → Sign-in: Authentik** and copy the redirect URI shown there, e.g. `https://family.example.com/api/auth/oidc/callback`.
-2. In Authentik, go to **Applications → Providers → Create → OAuth2/OpenID Provider**.
-   - Client type: **Confidential**
-   - Redirect URI (strict): the URI from step 1
-   - Scopes: keep the defaults (`openid`, `profile`, `email`)
-3. Go to **Applications → Create**, set the slug to `familyhub`, and choose the provider. Use policy bindings to control who can access it (for example, a `family` group).
-4. Back in FamilyHub, paste the **Issuer URL** (shown on the Authentik provider page, e.g. `https://auth.example.com/application/o/familyhub/`), the **Client ID** and the **Client secret**. Click **Test connection**, then **Save**. The sign-in button appears on the login page immediately.
-5. Optional: set an **Admin group**. Members of that Authentik group become FamilyHub admins, and the role is re-checked at every sign-in.
+1. In FamilyHub, open **Settings → App settings → Sign-in** and copy the redirect URI shown there, e.g. `https://family.example.com/api/auth/oidc/callback`.
+2. In Authentik, go to **Applications → Providers → Create → OAuth2/OpenID Provider**:
+   - Client type: **Confidential**.
+   - Redirect URI (strict): the URI from step 1.
+   - Scopes: keep the defaults (`openid`, `profile`, `email`).
+3. Go to **Applications → Create**, set the slug to `familyhub` and choose the provider. Use policy bindings to control who gets in, for example a `family` group.
+4. Back in FamilyHub, fill in:
+   - the **Issuer URL** from the Authentik provider page, e.g. `https://auth.example.com/application/o/familyhub/`
+   - the **Client ID** and **Client secret**
 
-Account matching on SSO login works in this order: an existing link, then a family member with the same email (which gets linked automatically), then a new member if auto-create is on.
+   Click **Test connection**, then **Save**. The sign-in button appears on the login page straight away.
+5. Optional: set an **Admin group**. Members of that Authentik group become heads of household, and FamilyHub re-checks this at every sign-in.
 
-**Turning off password sign-in.** This is only allowed once Authentik is configured and you have signed in with it at least once. Password sign-in also switches itself back on if the SSO settings are ever removed.
+When someone signs in with SSO, FamilyHub finds their account in this order:
 
-**Locked out?** Add `LOCAL_LOGIN_ENABLED=true` to `.env` and run `docker compose up -d`.
+1. An account already linked to their SSO login.
+2. A family member with the same email, which is then linked automatically.
+3. A new member, if auto-create is on.
+
+**Turning off password sign-in** is only allowed once Authentik works and you've signed in with it at least once. If the SSO settings are ever removed, password sign-in switches itself back on.
 
 ## Google Calendar setup (two-way sync)
 
-1. In FamilyHub, open **Settings → App settings → Google Calendar** and copy the redirect URI shown there, e.g. `https://family.example.com/api/google/callback`.
-2. In [Google Cloud Console](https://console.cloud.google.com/), create a project and enable the **Google Calendar API**.
-3. Configure the **OAuth consent screen**: user type **External**, and add the scope `https://www.googleapis.com/auth/calendar`.
-4. Create **Credentials → OAuth client ID → Web application**, with the redirect URI from step 1 as an **Authorized redirect URI**.
+1. In FamilyHub, open **Settings → App settings → Google API** and copy the redirect URI shown there, e.g. `https://family.example.com/api/google/callback`.
+2. In the [Google Cloud Console](https://console.cloud.google.com/), create a project and enable the **Google Calendar API**.
+3. Configure the **OAuth consent screen**: user type **External**, with the scope `https://www.googleapis.com/auth/calendar`.
+4. Create **Credentials → OAuth client ID → Web application**. Add the redirect URI from step 1 as an **Authorized redirect URI**.
 5. Paste the client ID and secret into FamilyHub, click **Test credentials**, then **Save**.
-6. Each person goes to **Settings → Google Calendar → Connect account**. Their primary calendar is synced automatically. They can turn on any others and set **Belongs to** so events get that person's color.
+6. Each person goes to **Settings → Google Calendar → Connect account**. Their primary calendar syncs automatically. They can turn on other calendars and set **Belongs to**, so events get that person's colour.
 
-> **Important:** while the consent screen is in **Testing**, Google expires refresh tokens after 7 days, so sync will stop and ask you to reconnect. For a family install, click **Publish app** on the Audience page. You don't need Google's verification: users will see an "unverified app" warning once when they connect, which is fine for personal use.
+> **Important:** while the consent screen is in **Testing**, Google expires sign-ins after 7 days and sync stops. On the consent screen's Audience page, click **Publish app**. You don't need Google's verification. People see an "unverified app" warning once when they connect, which is fine for family use.
 
-### How sync behaves
+How sync behaves:
 
-- **Choosing where an event lives.** When creating an event, you pick **FamilyHub only** or a Google calendar you can write to. Google-backed events are written to Google first, so Google stays the source of truth.
-- **Pull sync.** FamilyHub mirrors a rolling window of 60 days back to 400 days ahead (configurable). Events deleted in Google disappear from FamilyHub on the next sync.
-- **Repeating events.** A repeating event created in FamilyHub on a Google calendar is created in Google as a real recurring series. Google series appear as individual occurrences, and editing or deleting one in FamilyHub changes only that occurrence. To change a whole Google series, use Google Calendar.
-- **Moving events.** You can move an event between FamilyHub-only and any writable Google calendar.
-- **Who an event is for.** The "Who's it for?" members are stored on the Google event as a private extended property, so they survive round trips.
-- **Read-only calendars.** Calendars shared with you as read-only (holidays, school calendars, etc.) can be synced and viewed but not edited.
-- **Token storage.** OAuth tokens and client secrets are encrypted at rest (AES-256-GCM) with the auto-generated key in `/data/secrets.json`.
+- **Where an event lives:** when you create an event, you choose **FamilyHub only** or a Google calendar you can write to. Google-backed events are written to Google first, so Google stays the source of truth.
+- **Sync window:** FamilyHub mirrors 60 days back to 400 days ahead; both can be changed. Events deleted in Google disappear on the next sync.
+- **Repeating events:**
+  - Created in FamilyHub on a Google calendar, they become real recurring series in Google.
+  - Google series appear as individual occurrences. Editing one in FamilyHub changes only that occurrence.
+  - To change a whole Google series, use Google Calendar.
+- **Who an event is for:** the "Who's it for?" members are saved on the Google event, so they survive round trips.
+- **Read-only calendars:** holiday and school calendars shared with you can be shown, but not edited.
+- **Tokens:** Google tokens are stored encrypted (AES-256-GCM).
 
 ## Customizing the Home page
 
 Tap **Customize** (bottom-right of Home) to edit the page in place:
 
-- **Move widgets** by dragging the ⠿ handle; this works with touch too.
-- **Resize** by dragging the corner, or with the −/+ buttons. The page uses a 12-column grid on wide screens, 6 columns on tablets, and a single column on phones.
-- **Add or remove widgets:** greeting & clock, big clock, weather, cameras, coming up, today's chores, today's meals, shopping list (more than one allowed), to-dos, and family notes.
-- **Widget options (⚙):** for example how many days of events to show, which shopping list to show, or the text and colour of a note.
-- **Look & feel:** accent colour (applies to the whole app), light/dark/automatic, text size (great for a wall tablet), background and spacing.
+- **Move** a widget by dragging its ⠿ handle; this works with touch too.
+- **Resize** a widget by dragging its corner, or with the −/+ buttons. The page is a 12-column grid on wide screens, 6 columns on tablets and one column on phones.
+- **Add widget:** greeting and clock, big clock, weather, cameras, coming up, today's chores, today's meals, shopping list (more than one allowed), to-dos and family notes.
+- **Widget options (⚙):** for example, how many days of events to show, which shopping list, or a note's text and colour.
+- **Look & feel:** accent colour (for the whole app), light/dark/automatic, text size (great on a wall screen), background and spacing.
 
-Each person's Home page is their own. A head of household can press **Save for family** to make a layout the default for everyone who hasn't customized theirs, and anyone can **Reset** back to the family layout.
+Each person's Home page is their own. A head of household can press **Save for family** to make a layout the default for everyone who hasn't customized theirs. Anyone can press **Reset** to go back to the family layout.
 
-## Family & roles
+## Family and roles
 
 **Settings → Family members** is where the head of household manages the family:
 
 - Set the family name.
-- Add adults and children, and edit anyone's name, colour, avatar and login.
-- **Head of household:** manages the family and all app settings. There can be more than one, and FamilyHub always keeps at least one.
-- **Adult:** full use of calendar, lists, chores and meals.
-- **Child:** appears on the calendar and chore charts, and doesn't need a login.
+- Add adults and children.
+- Change anyone's name, colour, avatar and login.
 
-Settings are organised into tabs grouped by **You**, **Family**, **Connections** and **App settings** (heads of household only).
+The roles are:
+
+- **Head of household:** manages the family, connections and all app settings. There can be more than one, and FamilyHub always keeps at least one who can sign in.
+- **Adult:** full use of the calendar, lists, chores and meals. Adults can change their own profile.
+- **Child:** shown on the calendar and chore charts. A child can have a login, but doesn't need one.
+
+Settings are grouped into tabs: **You** (profile, screen & alerts), **Family**, **Connections** (your Google accounts) and **App settings** (heads of household only).
 
 ## Cameras (UniFi Protect)
 
-FamilyHub can show your UniFi Protect cameras on the Home page and pop up the doorbell camera when someone rings. It uses the official **Protect Integration API**, which needs Protect 5.3 or newer and an API key.
+FamilyHub can show your UniFi Protect cameras on Home and pop up the doorbell camera when someone rings. It uses the official **Protect Integration API**, which needs Protect 5.3 or newer.
 
 1. In your UniFi console, create an API key. It's under **Settings → Control Plane → Integrations**, or **Protect → Settings → Integrations** on some versions.
-2. In FamilyHub, go to **Settings → App settings → Cameras**:
+2. In FamilyHub, open **Settings → App settings → Cameras**:
    - Enter the console address (e.g. `https://192.168.1.1`) and the API key.
-   - Click **Test connection**, then **Choose cameras** to pick which cameras appear on Home and in what order.
-3. Choose the default display. Each person can change it for themselves under **Settings → Cameras**:
-   - **Snapshots.** A still image from each camera, refreshed every few seconds.
-   - **Live video.** Live streams on the Home page.
-   - **Snapshots, live when tapped.** Snapshot tiles; tapping one opens full-screen live video.
-4. **Doorbell pop-up.** When the doorbell rings, every open FamilyHub screen shows that camera full screen for 30 seconds (configurable), even over the photo slideshow. Each person can turn this off for themselves.
+   - Click **Test connection**.
+   - Click **Choose cameras** to pick which cameras show and in what order.
+3. Choose the default display. Each person can change it for themselves under **Settings → Screen & alerts**:
+   - **Snapshots:** a still image from each camera, refreshed every few seconds.
+   - **Live video:** live streams on Home.
+   - **Snapshots, live when tapped:** snapshot tiles that open full-screen live video.
+4. **Doorbell pop-up:** when the doorbell rings, every open FamilyHub screen shows that camera full screen for 30 seconds (adjustable), even over the slideshow. Each person can turn it off for themselves.
 
-**Smooth, fast live video** (Settings → App settings → Cameras):
+### Smooth, fast live video
 
-- **Keep cameras ready in the background** (on by default for tile streams). The video relay stays connected to your cameras around the clock (go2rtc "preload"), so live video starts almost instantly instead of waiting a few seconds each time. It uses a little constant bandwidth on your home network, with no transcoding.
-- **Two qualities.** Small Home tiles use Protect's *low* stream, and full screen uses *high*. Both can be changed.
-- **Low-latency WebRTC** (optional). Turn it on and enter the server's home-network IP (e.g. `192.168.1.20`).
+In **Settings → App settings → Cameras**:
 
-  Devices on your home network then connect straight to the server on port **8555 (TCP and UDP)**, which `docker-compose.yml` publishes. Allow it through the server's firewall (e.g. `sudo ufw allow 8555`). FamilyHub writes the go2rtc config and restarts go2rtc for you. If a browser can't reach that port, video falls back to standard streaming automatically. If 8555 is taken, set `WEBRTC_PORT=xxxx` in `.env`.
+- **Keep cameras ready in the background** (on for Home tiles by default). The video relay stays connected to your cameras, so live video starts almost instantly. It uses a little constant bandwidth on your home network, with no re-encoding.
+- **Tile quality and full-screen quality.** By default, small Home tiles use Protect's *low* stream and full screen uses *high*.
+- **Low-latency video (WebRTC).** Choose **On: for devices on your home network** and enter the server's home-network address (from `hostname -I`, e.g. `192.168.1.20`). Then click **Save** and **Apply video settings now**.
+  - Devices on your network connect directly to the server on port **8555 (TCP and UDP)**, so allow it through your firewall (`sudo ufw allow 8555`).
+  - Anywhere WebRTC can't connect, for example away from home, video falls back to standard streaming automatically.
 
-**How live video works:** browsers can't play Protect's RTSPS streams, so the bundled `go2rtc` container converts them into video the browser can play. FamilyHub passes the video through to signed-in users. go2rtc's control API is never published; only its WebRTC media port (8555) is, and that only carries video that FamilyHub has already set up for a signed-in user. If you use a reverse proxy, make sure **WebSocket support** is enabled for FamilyHub; live video, like the doorbell, depends on it.
+**How it works:** browsers can't play Protect's RTSPS streams, so the bundled `go2rtc` container turns them into video the browser can play. FamilyHub only passes it to signed-in users. go2rtc's control API is never published. Only the WebRTC media port is, and it carries only streams that FamilyHub set up for a signed-in user.
 
 ## Kiosk screens (wall tablets, Raspberry Pi)
 
-Turn a tablet or a Raspberry Pi display into a family dashboard that stays signed in on its own.
+Turn a tablet or a Raspberry Pi with a screen into a family dashboard that stays signed in on its own.
 
-1. A head of household opens **Settings → Kiosk screens → Add a screen**, picks whose Home page it shows and which pages it can open, and gets a one-time pairing code (valid 30 minutes).
-2. On the screen, open `https://<your FamilyHub>/kiosk` and enter the code (or open the pairing link, which pairs straight away).
+### Pair a screen
 
-A kiosk screen:
+1. Set a **Kiosk PIN**: on a phone or computer, open **Settings → App settings → Kiosk screens** and enter 4–8 digits.
+2. On the same tab, tap **Add a screen** and choose:
+   - a name
+   - **whose Home page it shows** (that person's layout and slideshow settings)
+   - which pages people can open besides Home: Calendar, Lists, Chores, Meals
+   - how soon it goes back to Home when nobody's touching it
+   - whether to hide the mouse pointer and refresh once a night
 
-- Opens full screen ("Tap anywhere to start" the first time), keeps the display awake (Screen Wake Lock, needs HTTPS) and hides the sidebar and Settings.
-- Goes back to Home after a chosen idle time, shows a "Reconnecting…" banner if the server can't be reached and refreshes itself when it's back, reloads after app updates and once a night.
-- Stays signed in with its own device token (an httpOnly cookie). No one's password is stored on it, and it never gets head-of-household access, even when it shows a head of household's Home page. Remove the screen in Settings to sign it out instantly.
-- Has a small lock button that asks for the **kiosk PIN** (set it on the same Settings tab). After the PIN you can unlock all pages for 5 minutes, customize Home, reload, or sign the screen out.
+   You then get a **pairing code** that works once, for 30 minutes.
+3. On the screen, open `https://<your FamilyHub>/kiosk` and enter the code. You can also open the pairing link shown with the code, which pairs straight away. The login page also has a "Set this screen up as a kiosk" link.
 
-To stop people leaving the browser, lock the device to it: **App pinning** on Android (after "Add to Home screen"), **Guided Access** on iPad, or on a Raspberry Pi start Chromium with `chromium-browser --kiosk --noerrdialogs --disable-infobars https://<your FamilyHub>/kiosk` and turn off screen blanking in `raspi-config`.
+### What a kiosk screen does
+
+- **Full screen with no menus:** no sidebar, no Settings, just Home and the pages you allowed, with big touch-friendly buttons. Tap once the first time to go full screen.
+- **Stays awake:** it keeps the display on (this needs HTTPS).
+- **Looks after itself:**
+  - It goes back to Home after the idle time you chose.
+  - It shows "Reconnecting…" if the server can't be reached, and recovers on its own.
+  - It reloads after app updates and once a night.
+- **Stays signed in safely:**
+  - The screen has its own sign-in, and no one's password is stored on it.
+  - It never gets head-of-household powers, even if it shows a head of household's Home page.
+  - Removing the screen in Settings signs it out instantly. **Re-pair** makes a new code and signs the old one out, which is handy when replacing a tablet.
+- **PIN-protected menu:** the small lock button asks for the PIN, then lets a grown-up:
+  - unlock every page for 5 minutes, including **Customize** on Home
+  - go full screen
+  - reload
+  - sign the screen out
+
+  If no PIN is set, anyone can open the menu, so set one.
+
+Settings → Kiosk screens also shows each screen's status (online, last seen, device type).
+
+### Lock the device to FamilyHub
+
+A web page can't stop someone pressing the tablet's own Home button, so use the device's built-in lock:
+
+- **Android tablet:**
+  1. In Chrome, open the menu and choose **Add to Home screen**, then open FamilyHub from that icon.
+  2. Turn on **App pinning** (Settings → Security → App pinning) and pin FamilyHub.
+- **iPad:**
+  1. Tap Share → **Add to Home Screen**, and open FamilyHub from that icon.
+  2. Turn on **Guided Access** (Settings → Accessibility → Guided Access) and triple-click the side or Home button to lock the iPad to it.
+- **Raspberry Pi** (Raspberry Pi OS with desktop):
+  1. Turn off screen blanking: `sudo raspi-config` → Display Options → Screen Blanking → **No**.
+  2. Start Chromium in kiosk mode on login. Create `~/.config/autostart/familyhub.desktop` with:
+
+     ```ini
+     [Desktop Entry]
+     Type=Application
+     Name=FamilyHub
+     Exec=chromium-browser --kiosk --noerrdialogs --disable-infobars --check-for-update-interval=31536000 https://family.example.com/kiosk
+     ```
+
+     On newer Raspberry Pi OS versions the command is `chromium` instead of `chromium-browser`.
+  3. Reboot, enter the pairing code once, and it will start straight into FamilyHub from then on.
 
 ## Weather
 
-The Home page shows the current conditions and a 6-day forecast, and the photo slideshow shows the temperature in the corner. The data comes from [Open-Meteo](https://open-meteo.com), which is free and needs no API key; FamilyHub fetches it on the server and caches it for 15 minutes.
+Home shows the current conditions and a forecast. The calendar shows each day's forecast (up to 14 days ahead), and the photo slideshow shows the temperature in a corner. The data comes from [Open-Meteo](https://open-meteo.com), which is free and needs no API key. FamilyHub fetches it on the server and caches it for 15 minutes.
 
-To set it up, an admin goes to **Settings → App settings → Weather**, searches for a city or ZIP code (or uses the device's location), and picks °F or °C.
+To set it up, go to **Settings → App settings → Weather**. Search for a city or ZIP code (or use this device's location), and pick °F or °C.
 
 ## Photo slideshow (Home screensaver)
 
-When someone has been idle on the Home page (1 minute by default), a full-screen slideshow of family photos appears with the time and date. Any touch, click, key press or mouse movement closes it. There's also a **Photos** button on Home to start it by hand.
+When nobody has touched the Home page for a while (1 minute by default), a full-screen slideshow of family photos starts, with the time, date and weather. Any touch, click or key press closes it. The **Photos** button on Home starts it by hand.
 
-- **Per person:** go to **Settings → Photo slideshow** to turn it on or off and change how many minutes of inactivity start it.
-- **Photo sources (admin):** go to **Settings → App settings → Photos**:
-  - **Amazon Photos shared links.** In Amazon Photos, choose **Share → Copy link** on an album or group, allow anyone with the link to view, and paste the link, one per line. Amazon has no public API, so FamilyHub reads the same public data as the share page. No Amazon login is stored, but if Amazon changes that page, photos may stop loading until FamilyHub is updated.
-  - **Immich.** Enter your server URL and an API key, then pick albums. If you don't pick any, your Immich favorites are used.
+- **Per person:** in **Settings → Screen & alerts**, turn the slideshow on or off and choose how many minutes it waits.
+- **Photo sources** (head of household, **Settings → App settings → Photos**):
+  - **Amazon Photos shared links.** In Amazon Photos, open an album or group, choose **Share → Copy link**, and allow anyone with the link to view. Paste the links one per line.
+    - Amazon has no public API, so FamilyHub reads the same public data as the share page.
+    - No Amazon login is stored. If Amazon changes that page, photos may stop loading until FamilyHub is updated.
+  - **Immich.** Enter your server URL and an API key, then pick albums. If you don't pick any, your Immich favourites are used.
   - Click **Load photos** to check what was found.
 
-Images are fetched by the FamilyHub server and passed on to the browser, so the browser never needs access to Amazon or Immich, and your Immich API key stays on the server.
+Photos are fetched by the FamilyHub server and passed on to the browser. Screens never need access to Amazon or Immich, and your Immich API key stays on the server.
 
 ## Configuration reference
 
-Only `POSTGRES_PASSWORD` has to be set in `.env`: the app needs it to reach the database where every other setting is stored.
+Only `POSTGRES_PASSWORD` must be set in `.env`. Everything else is managed in the app and stored in the database.
 
-Every in-app setting can also be set with an environment variable, which takes priority. It then appears as locked in the UI, which is handy for infrastructure-as-code. See the commented list in `.env.example`: `APP_URL`, `TZ`, `LOCAL_LOGIN_ENABLED`, `OIDC_*`, `GOOGLE_*`, `SESSION_SECRET`, `ENCRYPTION_KEY`.
+Any in-app setting can also be set with an environment variable in `.env`, which takes priority. The setting then shows as locked in the app, which is handy for infrastructure-as-code. See the commented list in `.env.example`. Common ones:
 
-## Backups
+| Variable | Setting |
+|---|---|
+| `APP_URL`, `APP_NAME`, `FAMILY_NAME`, `TZ` | Public address, app name, family name, time zone |
+| `LOCAL_LOGIN_ENABLED` | Password sign-in (set `true` to recover if you lock yourself out) |
+| `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_ADMIN_GROUP`, `OIDC_AUTO_CREATE_USERS`, `OIDC_BUTTON_LABEL` | Authentik / OIDC |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_SYNC_INTERVAL_MINUTES`, `GOOGLE_SYNC_PAST_DAYS`, `GOOGLE_SYNC_FUTURE_DAYS` | Google Calendar |
+| `WEATHER_LATITUDE`, `WEATHER_LONGITUDE`, `WEATHER_LOCATION_NAME`, `WEATHER_UNITS` | Weather |
+| `PHOTOS_SOURCE`, `PHOTOS_AMAZON_LINKS`, `IMMICH_URL`, `IMMICH_API_KEY`, `IMMICH_ALBUM_IDS` | Photo slideshow |
+| `PROTECT_URL`, `PROTECT_API_KEY`, `CAMERAS_MODE`, `CAMERAS_TILE_QUALITY`, `CAMERAS_LIVE_QUALITY`, `CAMERAS_PRELOAD` | Cameras |
+| `WEBRTC_MODE` (`off`/`lan`), `WEBRTC_LAN_ADDRESS`, `WEBRTC_PORT` | Camera WebRTC |
+| `KINBOARD_PORT` | Host port for the web app (default 3000) |
+| `SESSION_SECRET`, `ENCRYPTION_KEY` | Normally generated automatically; only set them to manage keys yourself |
 
-Back up **both** volumes: `familyhub-db` (all data) and `familyhub-data` (the keys that decrypt saved secrets and Google tokens).
+The session secret and encryption key are generated on first start and kept in the `familyhub-data` volume (`/data/secrets.json`).
+
+## Backups and restore
+
+Back up **both** of these. Without the keys file, saved secrets and Google sign-ins can't be decrypted.
+
+- the database, from the `familyhub-db` volume
+- the keys file, from the `familyhub-data` volume
 
 ```bash
+cd ~/FamilyHub
 docker compose exec -T db pg_dump -U familyhub familyhub | gzip > familyhub-$(date +%F).sql.gz
 docker compose cp app:/data/secrets.json ./familyhub-secrets-$(date +%F).json
 ```
 
+Restore onto a fresh install (same `POSTGRES_PASSWORD`):
+
+```bash
+docker compose up -d db
+gunzip -c familyhub-YYYY-MM-DD.sql.gz | docker compose exec -T db psql -U familyhub familyhub
+docker compose up -d app
+docker compose cp ./familyhub-secrets-YYYY-MM-DD.json app:/data/secrets.json
+docker compose restart app
+```
+
+## Security notes
+
+- **Passwords:** hashed with bcrypt. Login attempts are rate-limited.
+- **Secrets:** API keys, client secrets and Google tokens are encrypted at rest with AES-256-GCM, and never sent back to the browser.
+- **Kiosk screens:** they use their own revocable device tokens, and only a hash of each token is stored. They never get admin access, and the kiosk menu is protected by a PIN.
+- **Camera relay:** its control API is private. Video is only served to signed-in users.
+- **Keep it private:** FamilyHub works well VPN-only. If you expose it to the internet, use HTTPS and consider putting Authentik in front.
+
 ## Development
 
 ```bash
-# terminal 1: Postgres
+# terminal 1: Postgres (add ports: ["5432:5432"] to the db service first)
 docker compose up db -d
-# terminal 2: API (http://localhost:3000)
+# terminal 2: API on http://localhost:3000
 cd server && npm install && DATABASE_URL=postgres://familyhub:<pw>@localhost:5432/familyhub npm run dev
-# terminal 3: web (http://localhost:5173, proxies /api to :3000)
+# terminal 3: web on http://localhost:5173 (proxies /api to :3000)
 cd web && npm install && npm run dev
 ```
 
-For the dev setup, expose the DB port by adding `ports: ["5432:5432"]` to the `db` service. Run `npm run typecheck` in `server/` and `web/` for strict type checks.
+Run `npm run typecheck` in `server/` and `web/` for strict type checks. Every push to `main` builds `ghcr.io/hardynetworks/familyhub:latest` with GitHub Actions.
 
 ### Project layout
 
 ```
 server/src
-  index.ts        Express app, sessions, static hosting
-  auth.ts         local login, first-run setup, Authentik OIDC (PKCE)
+  index.ts        Express app, sessions, routes, static hosting
+  auth.ts         local login, first-run setup, Authentik OIDC (PKCE), kiosk device sign-in
   settings.ts     in-app settings store (env overrides, encrypted secrets)
   env.ts          static env + auto-generated secrets in DATA_DIR
-  google.ts       Google OAuth, calendar list, pull sync loop, push helpers
-  migrate.ts      SQL schema migrations
-  routes/         members, events, lists, chores, meals/recipes, google, admin (app settings)
+  migrate.ts      SQL schema migrations (applied automatically)
+  google.ts       Google OAuth, calendar list, sync loop
+  photos.ts       Amazon Photos + Immich slideshow sources
+  weather.ts      Open-Meteo forecast + location search
+  protect.ts      UniFi Protect API, doorbell events, go2rtc stream management
+  devices.ts      kiosk screen tokens and options
+  go2rtcProxy.ts  authenticated WebSocket proxy for live video
+  routes/         members, events, lists, chores, meals, google, photos, weather, home,
+                  cameras, kiosk, admin (app settings)
 web/src
-  pages/          Home, Calendar (FullCalendar), Lists, Chores, Meals, Settings, Login
-  components/     EventModal, UI primitives
+  pages/          Home (editor), Calendar, Lists, Chores, Meals, Settings, Login
+  components/     widgets, cameras, slideshow, weather, kiosk shell + admin, app settings, UI
+  lib/            API client, hooks, Home layout model
 ```
 
-## Roadmap ideas
+### Roadmap ideas
 
-Photo album, family message board, push notifications, a kiosk/"wall" mode with auto-rotating views, Google push notifications (webhooks) for instant sync, and CalDAV/iCloud support.
+- A downloadable **FamilyHub OS image for Raspberry Pi** that boots straight into a kiosk screen, with Wi-Fi and pairing set up on first boot.
+- Night dimming for kiosk screens.
+- A family message board.
+- Push notifications.
+- Instant Google sync using Google's push notifications.
+- CalDAV / iCloud calendars.
 
 ## License
 
