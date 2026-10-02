@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { api } from './api';
 
-export type WidgetType = 'header' | 'weather' | 'cameras' | 'agenda' | 'chores' | 'meals' | 'shopping' | 'todos' | 'clock' | 'note';
+export type WidgetType = 'header' | 'weather' | 'cameras' | 'agenda' | 'chores' | 'meals' | 'shopping' | 'todos' | 'clock' | 'note' | 'countdowns' | 'rewards' | 'wifi';
 
 export interface Widget {
   id: string;
@@ -178,6 +178,33 @@ export const WIDGETS: WidgetSpec[] = [
       },
     ],
   },
+  {
+    type: 'countdowns',
+    label: 'Countdowns',
+    icon: 'cake',
+    description: 'Birthdays, anniversaries and special days coming up',
+    w: 4,
+    h: 4,
+    minW: 2,
+    minH: 2,
+    options: [
+      {
+        key: 'days',
+        label: 'Show the next',
+        kind: 'select',
+        def: '60',
+        options: [
+          { value: '14', label: '2 weeks' },
+          { value: '30', label: 'Month' },
+          { value: '60', label: '2 months' },
+          { value: '120', label: '4 months' },
+          { value: '366', label: 'Year' },
+        ],
+      },
+    ],
+  },
+  { type: 'rewards', label: 'Points', icon: 'gift', description: "Everyone's reward points (and dollars)", w: 3, h: 4, minW: 2, minH: 2 },
+  { type: 'wifi', label: 'Guest Wi-Fi', icon: 'wifi', description: 'Wi-Fi name, password and a QR code to join', w: 4, h: 4, minW: 3, minH: 3 },
 ];
 
 export const specFor = (t: WidgetType) => WIDGETS.find((w) => w.type === t)!;

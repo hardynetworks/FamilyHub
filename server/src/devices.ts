@@ -12,7 +12,7 @@ import { q } from './db';
 
 export const DEVICE_COOKIE = 'familyhub.device';
 export const PAIR_CODE_MINUTES = 30;
-export const KIOSK_PAGES = ['calendar', 'lists', 'chores', 'meals'] as const;
+export const KIOSK_PAGES = ['calendar', 'lists', 'chores', 'meals', 'info'] as const;
 export type KioskPage = (typeof KIOSK_PAGES)[number];
 
 export interface DeviceOptions {

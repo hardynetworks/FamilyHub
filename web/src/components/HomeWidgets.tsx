@@ -1,4 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
+import { WifiWidget } from '../pages/InfoPage';
+import { CountdownsWidget } from './Occasions';
+import { RewardsWidget } from './Rewards';
 import { CSSProperties, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CalEvent, Chore, List, ListItem, Meal, api, qs } from '../lib/api';
@@ -49,6 +52,12 @@ export function WidgetView({ widget, onPhotos, canShowPhotos }: { widget: Widget
       return <TodosWidget />;
     case 'note':
       return <NoteWidget widget={widget} />;
+    case 'countdowns':
+      return <CountdownsWidget days={Number(optionValue(widget, 'days')) || 60} />;
+    case 'rewards':
+      return <RewardsWidget />;
+    case 'wifi':
+      return <WifiWidget />;
     default:
       return null;
   }

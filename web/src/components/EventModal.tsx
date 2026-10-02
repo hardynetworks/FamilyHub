@@ -16,9 +16,10 @@ export function EventModal({ event, draft, onClose }: { event?: CalEvent; draft?
   const me = useMe();
   const { members } = useMembers();
   const status = useAuthStatus().data;
-  const targets = useQuery({ queryKey: ['event-targets'], queryFn: () => api<CalendarTarget[]>('/events/targets'), enabled: !!status?.google.enabled });
+  const targets = useQuery({ queryKey: ['event-targets'], queryFn: () => api<CalendarTarget[]>('/events/targets') });
 
-  const isLocalSeries = !!event?.rrule && event.source === 'local';
+  // Series stored as one repeating event (FamilyHub, iCloud / CalDAV) are edited as a whole.
+  const isLocalSeries = !!event?.rrule && event.source !== 'google';
   const initStart = event ? new Date(isLocalSeries ? event.seriesStart : event.start) : draft?.start ?? new Date();
   const initEndRaw = event ? new Date(isLocalSeries ? event.seriesEnd : event.end) : draft?.end ?? new Date(initStart.getTime() + 3600_000);
   const allDayInit = event?.allDay ?? draft?.allDay ?? false;
@@ -44,6 +45,9 @@ export function EventModal({ event, draft, onClose }: { event?: CalEvent; draft?
   const [location, setLocation] = useState(event?.location ?? '');
   const [description, setDescription] = useState(event?.description ?? '');
   const [calendarId, setCalendarId] = useState<string>(event?.calendarId ?? '');
+  const [reminder, setReminder] = useState<string>(event?.reminderMinutes != null ? String(event.reminderMinutes) : '');
+  const target = targets.data?.find((t) => t.id === calendarId);
+  const showCalendars = !!status?.google.enabled || (targets.data ?? []).length > 0 || !!event?.calendarId;
 
   const isGoogleInstance = !!event?.isGoogleRecurringInstance;
   const readOnly = event && !event.editable;
@@ -72,6 +76,7 @@ export function EventModal({ event, draft, onClose }: { event?: CalEvent; draft?
         rrule: isGoogleInstance ? null : buildRrule(repeat, until || null),
         memberIds,
         calendarId: calendarId || null,
+        reminderMinutes: reminder === '' ? null : Number(reminder),
       };
       return event ? api(`/events/${event.id}`, 'PATCH', body) : api('/events', 'POST', body);
     },
@@ -119,7 +124,15 @@ export function EventModal({ event, draft, onClose }: { event?: CalEvent; draft?
       }
     >
       <form id="event-form" className="form" onSubmit={submit}>
-        {readOnly && <p className="note">This event is on a calendar you can only view ({event?.calendarName}).</p>}
+        {readOnly && (
+          <p className="note">
+            {event?.source === 'occasion'
+              ? 'Birthdays and anniversaries are edited in Settings → Birthdays & dates.'
+              : event?.isGoogleRecurringInstance && event?.source !== 'google'
+                ? 'This is one changed occurrence of a repeating event. Change it in the Calendar app, or edit the series.'
+                : `This event is on a calendar you can only view (${event?.calendarName}).`}
+          </p>
+        )}
         <fieldset disabled={!!readOnly} className="form">
           <input className="input input-lg" placeholder="What's happening?" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={500} />
 
@@ -171,8 +184,35 @@ export function EventModal({ event, draft, onClose }: { event?: CalEvent; draft?
             <MemberPicker members={members} value={memberIds} onChange={setMemberIds} />
           </Field>
 
-          {status?.google.enabled && (
-            <Field label="Calendar" hint={calendarId ? 'Saved to Google Calendar and kept in sync both ways.' : 'Only visible in FamilyHub.'}>
+          <Field label="Reminder" hint="Sent to the people on the event (Android app and email).">
+            <select className="input" value={reminder} onChange={(e) => setReminder(e.target.value)}>
+              <option value="">No reminder</option>
+              <option value="0">When it starts</option>
+              <option value="5">5 minutes before</option>
+              <option value="10">10 minutes before</option>
+              <option value="15">15 minutes before</option>
+              <option value="30">30 minutes before</option>
+              <option value="60">1 hour before</option>
+              <option value="120">2 hours before</option>
+              <option value="1440">1 day before</option>
+              <option value="2880">2 days before</option>
+              <option value="10080">1 week before</option>
+            </select>
+          </Field>
+
+          {showCalendars && (
+            <Field
+              label="Calendar"
+              hint={
+                !calendarId
+                  ? 'Only visible in FamilyHub.'
+                  : target?.provider === 'icloud'
+                    ? 'Saved to iCloud and kept in sync both ways (iPhone, iPad, Mac).'
+                    : target?.provider === 'caldav'
+                      ? 'Saved to that calendar and kept in sync both ways.'
+                      : 'Saved to Google Calendar and kept in sync both ways.'
+              }
+            >
               <select className="input" value={calendarId} onChange={(e) => setCalendarId(e.target.value)} disabled={isGoogleInstance}>
                 <option value="">FamilyHub only</option>
                 {(targets.data ?? []).map((t) => (

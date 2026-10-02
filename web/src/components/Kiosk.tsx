@@ -19,6 +19,7 @@ import { CalendarPage } from '../pages/CalendarPage';
 import { ChoresPage } from '../pages/ChoresPage';
 import { HomePage } from '../pages/HomePage';
 import { ListsPage } from '../pages/ListsPage';
+import { InfoPage } from '../pages/InfoPage';
 import { MealsPage } from '../pages/MealsPage';
 import { DoorbellPopup } from './Cameras';
 import { GroupPicker } from './FamilyGroups';
@@ -29,6 +30,7 @@ const PAGES: { key: KioskPage; to: string; label: string; icon: string; element:
   { key: 'lists', to: '/lists', label: 'Lists', icon: 'list', element: <ListsPage />, extra: '/lists/:listId' },
   { key: 'chores', to: '/chores', label: 'Chores', icon: 'star', element: <ChoresPage /> },
   { key: 'meals', to: '/meals', label: 'Meals', icon: 'meal', element: <MealsPage /> },
+  { key: 'info', to: '/info', label: 'Info', icon: 'info', element: <InfoPage /> },
 ];
 const UNLOCK_MINUTES = 5;
 

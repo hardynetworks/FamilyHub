@@ -15,6 +15,7 @@ import { HomePage } from './pages/HomePage';
 import { ListsPage } from './pages/ListsPage';
 import { LoginPage } from './pages/LoginPage';
 import { MealsPage } from './pages/MealsPage';
+import { InfoPage } from './pages/InfoPage';
 import { SettingsPage } from './pages/SettingsPage';
 
 const NAV = [
@@ -23,6 +24,7 @@ const NAV = [
   { to: '/lists', label: 'Lists', icon: 'list' },
   { to: '/chores', label: 'Chores', icon: 'star' },
   { to: '/meals', label: 'Meals', icon: 'meal' },
+  { to: '/info', label: 'Info', icon: 'info' },
   { to: '/settings', label: 'Settings', icon: 'settings' },
 ];
 
@@ -127,6 +129,7 @@ function Shell({ appName }: { appName: string }) {
           <Route path="/lists/:listId" element={<ListsPage />} />
           <Route path="/chores" element={<ChoresPage />} />
           <Route path="/meals" element={<MealsPage />} />
+          <Route path="/info" element={<InfoPage />} />
           <Route path="/settings" element={<SettingsPage onLogout={logout} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

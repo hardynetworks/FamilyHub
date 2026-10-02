@@ -33,7 +33,7 @@ export interface Member {
   memberType: 'adult' | 'child';
   hasPassword: boolean;
   linkedSso: boolean;
-  prefs: { slideshowEnabled: boolean; slideshowIdleMinutes: number; camerasMode: CamerasMode | 'default'; doorbellPopup: boolean; notifyEmail: boolean; notifyText: string };
+  prefs: { slideshowEnabled: boolean; slideshowIdleMinutes: number; camerasMode: CamerasMode | 'default'; doorbellPopup: boolean; notifyEmail: boolean; notifyText: string; remindPush: boolean; remindEmail: boolean };
 }
 
 export type CamerasMode = 'off' | 'snapshots' | 'live' | 'snapshots_live';
@@ -89,7 +89,7 @@ export interface AuthStatus {
   kioskPinSet?: boolean;
 }
 
-export type KioskPage = 'calendar' | 'lists' | 'chores' | 'meals';
+export type KioskPage = 'calendar' | 'lists' | 'chores' | 'meals' | 'info';
 export interface KioskOptions {
   pages: KioskPage[];
   returnHomeSeconds: number;
@@ -142,9 +142,11 @@ export interface CalEvent {
   calendarId: string | null;
   calendarName: string | null;
   calendarColor: string | null;
-  source: 'local' | 'google';
+  source: 'local' | 'google' | 'icloud' | 'caldav' | 'ics' | 'occasion';
   isGoogleRecurringInstance: boolean;
   editable: boolean;
+  /** Minutes before the start to send a reminder (null = none). */
+  reminderMinutes: number | null;
 }
 
 export interface CalendarTarget {
@@ -153,6 +155,104 @@ export interface CalendarTarget {
   account: string;
   color: string | null;
   memberId: string | null;
+  provider?: string;
+}
+
+export interface Occasion {
+  id: string;
+  title: string;
+  kind: 'birthday' | 'anniversary' | 'other';
+  month: number;
+  day: number;
+  year: number | null;
+  memberId: string | null;
+  emoji: string;
+  customEmoji: string | null;
+  remindDays: number;
+  label: string;
+  next: string;
+  daysUntil: number;
+  years: number | null;
+  yearsLabel: string;
+}
+
+export interface Reward {
+  id: string;
+  title: string;
+  emoji: string | null;
+  cost: number;
+  active: boolean;
+}
+export interface RewardBalance {
+  memberId: string;
+  earned: number;
+  balance: number;
+  pending: number;
+  available: number;
+}
+export interface RewardsData {
+  pointsPerDollar: number;
+  rewards: Reward[];
+  balances: RewardBalance[];
+  pending: { id: string; memberId: string; title: string; emoji: string | null; cost: number; requestedAt: string }[];
+  history: { kind: string; memberId: string; title: string; emoji: string | null; points: number; status: string | null; at: string }[];
+}
+
+export interface WifiNetwork {
+  label: string;
+  ssid: string;
+  password: string;
+  security: 'WPA' | 'WEP' | 'nopass';
+  hidden: boolean;
+}
+export type ContactCategory = 'emergency' | 'family' | 'doctor' | 'dentist' | 'school' | 'work' | 'vet' | 'other';
+export interface InfoContact {
+  category: ContactCategory;
+  name: string;
+  role: string;
+  phone: string;
+  email: string;
+  notes: string;
+}
+export interface MedicalInfo {
+  memberId: string;
+  allergies: string;
+  medications: string;
+  conditions: string;
+  bloodType: string;
+  notes: string;
+}
+export interface FamilyInfo {
+  wifi: WifiNetwork[];
+  address: string;
+  contacts: InfoContact[];
+  medical: MedicalInfo[];
+  notes: string;
+  updatedAt?: string | null;
+}
+
+export interface ExtCalendarAccount {
+  id: string;
+  kind: 'caldav' | 'ics';
+  provider: string;
+  name: string;
+  url: string;
+  username: string | null;
+  userId: string | null;
+  canEdit: boolean;
+  lastError: string | null;
+  calendars: { id: string; name: string; color: string | null; writable: boolean; syncEnabled: boolean; memberId: string | null; lastSyncedAt: string | null; lastError: string | null }[];
+}
+
+export interface BackupsData {
+  backups: { name: string; size: number; createdAt: string }[];
+  folder: string;
+  writable: boolean;
+  busy: boolean;
+  lastError: string | null;
+  lastRun: string | null;
+  time: string;
+  keep: number;
 }
 
 export interface List {

@@ -22,6 +22,12 @@ import { weatherRouter } from './routes/weather';
 import { homeRouter } from './routes/home';
 import { devicesAdminRouter, kioskRouter } from './routes/kiosk';
 import { groupsRouter } from './groups';
+import { backupUploadRouter, backupsRouter, startBackupSchedule } from './backup';
+import { extCalendarsRouter, startExtSyncLoop } from './caldav';
+import { familyInfoRouter } from './familyInfo';
+import { occasionsRouter } from './occasions';
+import { remindersAdminRouter, startReminders } from './reminders';
+import { rewardsRouter } from './rewards';
 import { approveRouter } from './routes/approve';
 import { pushRouter, startDoorbellPush } from './push';
 import { camerasRouter, go2rtcRouter } from './routes/cameras';
@@ -65,6 +71,9 @@ async function main() {
   });
   app.use(loadUser);
 
+  // Backup file uploads are binary, so they come before the JSON-only rule below (with their own header check).
+  app.use('/api/admin/backups/upload', requireAdmin, backupUploadRouter);
+
   // Basic CSRF defence for the JSON API: state-changing requests must be JSON (forces a CORS preflight cross-site).
   app.use('/api', (req, _res, next) => {
     if (['POST', 'PUT', 'PATCH'].includes(req.method) && req.headers['content-type']?.split(';')[0] !== 'application/json') {
@@ -78,9 +87,15 @@ async function main() {
   app.use('/api/google', googleRouter);
   app.use('/api/kiosk', kioskRouter);
   app.use('/api/admin/devices', requireAdmin, devicesAdminRouter);
+  app.use('/api/admin/backups', requireAdmin, backupsRouter);
+  app.use('/api/admin/reminders', requireAdmin, remindersAdminRouter);
   app.use('/api/admin', requireAdmin, adminRouter);
   app.use('/api/members', requireAuth, membersRouter);
   app.use('/api/groups', requireAuth, groupsRouter);
+  app.use('/api/occasions', requireAuth, occasionsRouter);
+  app.use('/api/ext-calendars', requireAuth, extCalendarsRouter);
+  app.use('/api/rewards', requireAuth, rewardsRouter);
+  app.use('/api/info', requireAuth, familyInfoRouter);
   app.use('/api/events', requireAuth, eventsRouter);
   app.use('/api/lists', requireAuth, listsRouter);
   app.use('/api/items', requireAuth, itemsRouter);
@@ -121,6 +136,9 @@ async function main() {
   startLiveVideoManager();
   startDoorbellPush(async (id) => (await assertCamera(id)).name);
   startSyncLoop();
+  startBackupSchedule();
+  startExtSyncLoop();
+  startReminders();
 }
 
 main().catch((e) => {

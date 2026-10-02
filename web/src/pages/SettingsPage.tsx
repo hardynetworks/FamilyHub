@@ -3,7 +3,10 @@ import { useEffect, useState } from 'react';
 import { AppSettings } from '../components/AppSettings';
 import { KioskAdmin } from '../components/KioskAdmin';
 import { useCameras } from '../components/Cameras';
+import { BackupsCard } from '../components/Backups';
+import { ExtCalendarsCard } from '../components/ExtCalendars';
 import { FamilyGroupsCard } from '../components/FamilyGroups';
+import { OccasionsCard, RemindersPrefsCard } from '../components/Occasions';
 import { KeyboardSetting } from '../components/Kiosk';
 import { Avatar, COLOR_CHOICES, EMOJI_CHOICES, Field, Icon, Modal } from '../components/ui';
 import { GoogleStatus, Member, api } from '../lib/api';
@@ -13,6 +16,7 @@ type TabId =
   | 'profile'
   | 'display'
   | 'family'
+  | 'dates'
   | 'google'
   | 'app-general'
   | 'app-signin'
@@ -22,7 +26,8 @@ type TabId =
   | 'app-cameras'
   | 'app-kiosk'
   | 'app-notifications'
-  | 'app-security';
+  | 'app-security'
+  | 'app-backups';
 
 interface TabDef {
   id: TabId;
@@ -41,11 +46,14 @@ const GROUPS: { title: string; adminOnly?: boolean; tabs: TabDef[] }[] = [
   },
   {
     title: 'Family',
-    tabs: [{ id: 'family', label: 'Family members', icon: 'star' }],
+    tabs: [
+      { id: 'family', label: 'Family members', icon: 'star' },
+      { id: 'dates', label: 'Birthdays & dates', icon: 'cake' },
+    ],
   },
   {
     title: 'Connections',
-    tabs: [{ id: 'google', label: 'Google Calendar', icon: 'google' }],
+    tabs: [{ id: 'google', label: 'Calendars', icon: 'calendar' }],
   },
   {
     title: 'App settings',
@@ -60,6 +68,7 @@ const GROUPS: { title: string; adminOnly?: boolean; tabs: TabDef[] }[] = [
       { id: 'app-kiosk', label: 'Kiosk screens', icon: 'lock' },
       { id: 'app-notifications', label: 'Notifications', icon: 'star' },
       { id: 'app-security', label: 'Security', icon: 'lock' },
+      { id: 'app-backups', label: 'Backups', icon: 'download' },
     ],
   },
 ];
@@ -161,13 +170,21 @@ export function SettingsPage({ onLogout }: { onLogout: () => void }) {
                 <p className="muted small">For touch screens without a keyboard. Auto turns it on for FamilyHub OS and Linux kiosk screens; phones and tablets use their own keyboard.</p>
                 <KeyboardSetting kiosk={false} />
               </section>
+              <RemindersPrefsCard />
               <SlideshowPrefsCard />
               <CameraPrefsCard />
               {isAdmin && <AlertPrefsCard />}
             </>
           )}
           {tab === 'family' && <FamilyManager />}
-          {tab === 'google' && <GoogleCard />}
+          {tab === 'dates' && <OccasionsCard />}
+          {tab === 'google' && (
+            <>
+              <GoogleCard />
+              <ExtCalendarsCard />
+            </>
+          )}
+          {tab === 'app-backups' && <BackupsCard />}
           {tab === 'app-general' && <AppSettings section="general" />}
           {tab === 'app-signin' && <AppSettings section="signin" />}
           {tab === 'app-google' && <AppSettings section="google" />}

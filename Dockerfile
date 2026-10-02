@@ -21,8 +21,10 @@ FROM node:22-alpine
 ENV NODE_ENV=production \
     PORT=3000 \
     STATIC_DIR=/app/web/dist \
-    DATA_DIR=/data
-RUN apk add --no-cache tzdata wget && mkdir -p /data && chown node:node /data
+    DATA_DIR=/data \
+    BACKUP_DIR=/backups
+# postgresql16-client: pg_dump / psql for backups
+RUN apk add --no-cache tzdata wget tar postgresql16-client && mkdir -p /data /backups && chown node:node /data /backups
 WORKDIR /app
 COPY --from=server /app/server/node_modules ./server/node_modules
 COPY --from=server /app/server/dist ./server/dist

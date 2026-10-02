@@ -131,6 +131,47 @@ export async function notifyParents(a: ParentAlert, only?: UserRow[]): Promise<C
   return out;
 }
 
+/**
+ * Reminders (events, to-dos, birthdays) for specific people: Android app push plus email, each
+ * as the person allows in Settings → Screen & alerts → Reminders (prefs remindPush / remindEmail).
+ */
+export async function notifyPeople(userIds: string[], a: { title: string; message: string; url?: string }): Promise<Channel[]> {
+  const out: Channel[] = [];
+  if (!userIds.length) return out;
+  const people = await q<UserRow>('select * from users where id = any($1::uuid[])', [userIds]);
+  const pushIds = people.filter((p) => p.prefs?.remindPush !== false).map((p) => p.id);
+  if (pushIds.length) {
+    const r = await pushToUsers(pushIds, { type: 'message', title: a.title, body: a.message, ...(a.url ? { url: a.url } : {}) });
+    if (r.sent || r.failed) out.push({ channel: 'Android app', ok: r.failed === 0, message: r.failed ? `${r.sent} sent, ${r.failed} failed: ${r.error}` : `Sent to ${r.sent}` });
+  }
+  if (mailConfigured()) {
+    const emails = people.filter((p) => p.email && p.prefs?.remindEmail !== false).map((p) => p.email!);
+    if (emails.length) {
+      try {
+        await sendMail(emails, a.title, `${a.message}${a.url ? `\n\n${a.url}` : ''}`, reminderEmailHtml(a));
+        out.push({ channel: 'Email', ok: true, message: `Sent to ${emails.length}` });
+      } catch (e: any) {
+        out.push({ channel: 'Email', ok: false, message: e.message });
+      }
+    }
+  }
+  for (const c of out) if (!c.ok) console.warn(`Reminder via ${c.channel} failed: ${c.message}`);
+  return out;
+}
+
+function reminderEmailHtml(a: { title: string; message: string; url?: string }) {
+  return `<!doctype html><html><body style="margin:0;background:#f3f5fa;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#0f172a">
+<div style="max-width:520px;margin:0 auto;padding:28px 20px">
+<div style="background:#fff;border-radius:16px;padding:24px;border:1px solid #e2e7f0">
+<div style="font-size:13px;color:#5b6478;font-weight:600">${esc(getSetting('familyName') || getSetting('appName'))}</div>
+<h1 style="font-size:20px;margin:6px 0 10px">${esc(a.title)}</h1>
+<p style="font-size:15px;line-height:1.5;margin:0 0 18px;white-space:pre-line">${esc(a.message)}</p>
+${a.url ? `<a href="${esc(a.url)}" style="display:inline-block;padding:12px 22px;border-radius:10px;background:#6366f1;color:#fff;text-decoration:none;font-weight:700">Open FamilyHub</a>` : ''}
+</div>
+<p style="font-size:12px;color:#8e99b3;margin-top:14px">Sent by FamilyHub. Turn reminder emails off in Settings → Screen &amp; alerts → Reminders.</p>
+</div></body></html>`;
+}
+
 export async function sendTestNotifications(user: UserRow) {
   const results = await notifyParents(
     { title: 'FamilyHub test', message: `Notifications are working, ${user.name.split(' ')[0]}! Chore approvals will arrive like this.` },

@@ -70,6 +70,8 @@ membersRouter.patch('/:id', async (req, res) => {
           notifyEmail: z.boolean().optional(),
           // email-to-text address, e.g. 5551234567@vtext.com (empty = off)
           notifyText: z.union([z.literal(''), z.string().trim().email().max(200)]).optional(),
+          remindPush: z.boolean().optional(),
+          remindEmail: z.boolean().optional(),
         })
         .strict()
         .optional(),

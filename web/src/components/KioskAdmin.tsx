@@ -15,6 +15,7 @@ const PAGE_CHOICES: { key: KioskPage; label: string }[] = [
   { key: 'lists', label: 'Lists' },
   { key: 'chores', label: 'Chores' },
   { key: 'meals', label: 'Meals' },
+  { key: 'info', label: 'Family info (Wi-Fi, contacts)' },
 ];
 const RETURN_CHOICES = [
   { v: 0, label: 'Never' },
@@ -216,7 +217,7 @@ function DeviceModal({ device, onClose, onCreated }: { device: AdminDevice | nul
   const [userId, setUserId] = useState(device?.userId ?? me.id);
   const { groups } = useGroups();
   const [opts, setOpts] = useState<KioskOptions>(
-    device?.options ?? { pages: ['calendar', 'lists', 'chores', 'meals'], returnHomeSeconds: 120, hideCursor: false, reloadNightly: true, groupId: null },
+    device?.options ?? { pages: ['calendar', 'lists', 'chores', 'meals', 'info'], returnHomeSeconds: 120, hideCursor: false, reloadNightly: true, groupId: null },
   );
   const [busy, setBusy] = useState(false);
   const set = (p: Partial<KioskOptions>) => setOpts((o) => ({ ...o, ...p }));

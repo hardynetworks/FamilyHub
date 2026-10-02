@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { RewardsSection } from '../components/Rewards';
 import { Avatar, Empty, Field, Icon, Modal } from '../components/ui';
 import { Chore, ChoreApproval, Member, api, qs } from '../lib/api';
 import { WEEKDAYS, addDaysYmd, fmtDayLong, fmtTime, parseYmd, relativeDayLabel, startOfWeek, today, ymd } from '../lib/dates';
@@ -104,6 +105,7 @@ export function ChoresPage() {
           })}
         </aside>
       </div>
+      <RewardsSection />
       {manage && <ManageChores onClose={() => setManage(false)} />}
     </div>
   );

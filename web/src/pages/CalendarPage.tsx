@@ -150,6 +150,7 @@ export function CalendarPage() {
         memberIds: dto.memberIds,
         color: dto.color,
         calendarId: dto.calendarId,
+        reminderMinutes: dto.reminderMinutes,
       });
       refetch();
     } catch (e: any) {

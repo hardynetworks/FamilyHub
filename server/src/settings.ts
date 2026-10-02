@@ -64,6 +64,10 @@ export interface Settings {
   fcmApiKey: string;
   pushoverAppToken: string;
   pushoverUserKey: string;
+  backupTime: string;
+  backupKeep: number;
+  reminderTime: string;
+  pointsPerDollar: number;
 }
 export type SettingKey = keyof Settings;
 
@@ -129,7 +133,11 @@ export const DEFS: Record<SettingKey, Def> = {
   fcmAndroidAppId: { env: 'FCM_ANDROID_APP_ID', def: '' }, // e.g. 1:1234567890:android:abc123
   fcmApiKey: { env: 'FCM_API_KEY', def: '' }, // Firebase Web/Android API key (not a secret)
   pushoverAppToken: { env: 'PUSHOVER_APP_TOKEN', def: '', secret: true },
-  pushoverUserKey: { env: 'PUSHOVER_USER_KEY', def: '', secret: true }, // bcrypt hash of the kiosk PIN, set in Settings → Kiosk screens
+  pushoverUserKey: { env: 'PUSHOVER_USER_KEY', def: '', secret: true },
+  backupTime: { env: 'BACKUP_TIME', def: '03:15' }, // HH:MM local time for the nightly backup ('' = off)
+  backupKeep: { env: 'BACKUP_KEEP', def: 14 }, // how many backups to keep
+  reminderTime: { env: 'REMINDER_TIME', def: '07:30' }, // HH:MM for to-do and birthday reminders
+  pointsPerDollar: { env: 'POINTS_PER_DOLLAR', def: 10 }, // reward points worth $1 (0 = no money)
 };
 
 export const SETTING_KEYS = Object.keys(DEFS) as SettingKey[];

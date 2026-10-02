@@ -12,7 +12,7 @@ import { parse } from '../util';
 
 export const homeRouter = Router();
 
-export const WIDGET_TYPES = ['header', 'weather', 'cameras', 'agenda', 'chores', 'meals', 'shopping', 'todos', 'clock', 'note'] as const;
+export const WIDGET_TYPES = ['header', 'weather', 'cameras', 'agenda', 'chores', 'meals', 'shopping', 'todos', 'clock', 'note', 'countdowns', 'rewards', 'wifi'] as const;
 
 const Widget = z.object({
   id: z.string().min(1).max(40).regex(/^[A-Za-z0-9_-]+$/),

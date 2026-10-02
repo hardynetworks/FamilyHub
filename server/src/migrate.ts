@@ -232,6 +232,115 @@ with g as (insert into family_groups (name, emoji, color, sort) values ('Kids', 
 insert into family_group_members (group_id, user_id) select g.id, u.id from g, users u where u.member_type = 'child';
 `,
   },
+  {
+    id: '009_reminders_rewards_calendars_info',
+    sql: `
+-- Reminders
+alter table events add column reminder_minutes int;
+create table reminders_sent (
+  key text primary key,
+  sent_at timestamptz not null default now()
+);
+create table special_dates (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  kind text not null default 'birthday' check (kind in ('birthday','anniversary','other')),
+  month int not null check (month between 1 and 12),
+  day int not null check (day between 1 and 31),
+  year int check (year between 1900 and 2200),
+  member_id uuid references users(id) on delete set null,
+  emoji text,
+  remind_days int not null default 3 check (remind_days between 0 and 60),
+  created_by uuid references users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+-- Rewards
+create table rewards (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  emoji text,
+  cost int not null check (cost > 0),
+  active boolean not null default true,
+  sort int not null default 0,
+  created_at timestamptz not null default now()
+);
+create table reward_redemptions (
+  id uuid primary key default gen_random_uuid(),
+  reward_id uuid references rewards(id) on delete set null,
+  member_id uuid not null references users(id) on delete cascade,
+  title text not null,
+  emoji text,
+  cost int not null,
+  status text not null default 'pending' check (status in ('pending','approved','rejected')),
+  requested_by uuid references users(id) on delete set null,
+  requested_at timestamptz not null default now(),
+  reviewed_by uuid references users(id) on delete set null,
+  reviewed_at timestamptz,
+  review_token_hash text unique
+);
+create index reward_redemptions_member_idx on reward_redemptions (member_id);
+create table reward_adjustments (
+  id uuid primary key default gen_random_uuid(),
+  member_id uuid not null references users(id) on delete cascade,
+  points int not null,
+  kind text not null check (kind in ('bonus','payout','adjust')),
+  note text,
+  created_by uuid references users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index reward_adjustments_member_idx on reward_adjustments (member_id);
+
+-- iCloud / CalDAV calendars and .ics subscriptions
+create table ext_accounts (
+  id uuid primary key default gen_random_uuid(),
+  kind text not null check (kind in ('caldav','ics')),
+  provider text not null default 'caldav',
+  name text not null,
+  url text not null,
+  username text,
+  password_enc text,
+  user_id uuid references users(id) on delete cascade,
+  last_error text,
+  created_at timestamptz not null default now()
+);
+create table ext_calendars (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references ext_accounts(id) on delete cascade,
+  remote_url text not null,
+  name text not null,
+  color text,
+  writable boolean not null default false,
+  sync_enabled boolean not null default true,
+  member_id uuid references users(id) on delete set null,
+  ctag text,
+  last_synced_at timestamptz,
+  last_error text,
+  unique (account_id, remote_url)
+);
+alter table events
+  add column ext_calendar_id uuid references ext_calendars(id) on delete cascade,
+  add column ext_key text,
+  add column ext_href text,
+  add column ext_uid text,
+  add column ext_etag text,
+  add column exdates timestamptz[] not null default '{}',
+  add column recurrence_id timestamptz;
+create unique index events_ext_key_idx on events (ext_calendar_id, ext_key) where ext_calendar_id is not null;
+
+-- Family info card
+create table family_info (
+  id int primary key default 1 check (id = 1),
+  data jsonb not null default '{}'::jsonb,
+  updated_by uuid references users(id) on delete set null,
+  updated_at timestamptz not null default now()
+);
+
+-- Kiosk screens get the new Info page
+update devices set options = jsonb_set(options, '{pages}', (options->'pages') || '["info"]'::jsonb)
+  where jsonb_typeof(options->'pages') = 'array' and not ((options->'pages') ? 'info');
+`,
+  },
 ];
 
 export async function migrate(): Promise<void> {

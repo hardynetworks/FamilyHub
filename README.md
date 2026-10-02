@@ -55,6 +55,10 @@ These use a demo install filled with a made-up family (the "Parkers"), not real 
 - [Customizing the Home page](#customizing-the-home-page)
 - [Family and roles](#family-and-roles)
 - [Chore approval and parent notifications](#chore-approval-and-parent-notifications)
+- [Rewards](#rewards)
+- [Reminders, birthdays and dates](#reminders-birthdays-and-dates)
+- [Apple iCloud and calendar links](#apple-icloud-and-calendar-links)
+- [Family info card](#family-info-card)
 - [Cameras (UniFi Protect)](#cameras-unifi-protect)
 - [Kiosk screens (wall tablets, Raspberry Pi)](#kiosk-screens-wall-tablets-raspberry-pi)
 - [Weather](#weather)
@@ -81,6 +85,12 @@ These use a demo install filled with a made-up family (the "Parkers"), not real 
 | **Photo slideshow** | After a minute with nobody touching the Home page, a full-screen slideshow starts. Photos come from Amazon Photos shared links and/or Immich. |
 | **Cameras** | UniFi Protect snapshots and live video on Home, low-latency WebRTC on your home network, and a doorbell pop-up on every screen when someone rings. |
 | **Kiosk screens** | Pair a wall tablet or Raspberry Pi with a one-time code. It stays signed in, runs full screen, keeps the display awake, recovers by itself and is locked with a PIN. |
+| **iCloud & calendar links** | Apple iCloud calendars sync both ways (app-specific password). Any CalDAV server works too, and you can subscribe to .ics / webcal links from schools, teams and holiday lists. |
+| **Reminders** | Event reminders ("15 minutes before"), a morning note for to-dos due today, and birthday reminders, through the Android app and email. |
+| **Birthdays & dates** | Birthdays, anniversaries and other yearly dates on the calendar, with ages, reminders and a Home countdown widget. |
+| **Rewards** | Kids earn points from approved chores and spend them on rewards the parents set up (with a parent's OK). Balances can show in dollars; parents record bonuses and cash payouts. |
+| **Family info** | Wi-Fi with a scan-to-join QR code, home address, emergency contacts, doctors, school, vet and medical notes, all in one place (also on kiosk screens). |
+| **Backups** | A nightly backup of everything to `~/FamilyHub/backups`, with download, upload and one-click restore in Settings. |
 | **Family** | A head of household manages the family name, adults and children, their colours, avatars and logins. |
 | **Settings** | Everything is set up inside the app, in tabs: You, Family, Connections and App settings. Secrets are encrypted and never sent back to the browser. |
 
@@ -329,6 +339,38 @@ When a child marks a chore done, it shows **⏳ Waiting for OK**, and every head
 
 > The links in notifications use your **Public address** (Settings → App settings → General). The phone or computer you approve from must be able to reach it, for example over your VPN.
 
+## Rewards
+
+Kids earn points when their chores are approved. The **Rewards** section at the bottom of **Chores** shows everyone's points.
+
+- **Rewards list:** a head of household taps **Edit rewards** and adds things to spend points on, e.g. 📺 30 minutes of screen time (20 points), 🍕 pick dinner (30), 💵 $5 (50).
+- **Redeeming:** a kid taps a reward (on the kiosk or their phone) and picks their name. The parents get the same Approve / Not now notification as for chores (email, Android app, Pushover). Points are held until a parent decides. A parent redeeming for a kid is approved straight away.
+- **Money:** set **Points that make $1** (Edit rewards) to show balances in dollars too. Set it to 0 for points only.
+- **Bonus or payout:** add bonus points, or record cash you paid out (in dollars or points), so the balance stays right.
+- Add the **Points** widget to Home to show everyone's balance.
+
+## Reminders, birthdays and dates
+
+- **Event reminders:** pick a **Reminder** when you add or edit an event (when it starts, 5 minutes before … 1 week before). It goes to the people on the event.
+- **To-dos:** to-dos with a due date are sent to the person they're assigned to on the morning they're due.
+- **Birthdays & dates:** add them in **Settings → Birthdays & dates** (birthday, anniversary or other, with an optional year for the age). They show on the calendar every year, in the Home **Countdowns** widget, and the grown-ups get a reminder a few days before (not the birthday person, so surprises stay secret) and on the day.
+- **How they arrive:** through the FamilyHub Android app and by email (Mailjet). Each person picks in **Settings → Screen & alerts → Reminders**. A head of household sets the morning reminder time there too (default 7:30 am).
+
+## Apple iCloud and calendar links
+
+**Settings → Calendars** (next to Google Calendar):
+
+- **Add iCloud calendars:** Apple needs an app-specific password. Sign in at [account.apple.com](https://account.apple.com) → **Sign-In and Security → App-Specific Passwords**, create one called "FamilyHub", and enter it with your Apple ID. All your iCloud calendars appear; turn off any you don't want and choose whose each one is. Events you add or change in FamilyHub on an iCloud calendar show up on your iPhone, iPad and Mac, and changes made there come back within 15 minutes (or tap **Sync now**).
+- **Other CalDAV servers** (Nextcloud, Fastmail, Synology…) work the same way with their address, user name and password.
+- **Subscribe to a calendar link:** paste an .ics or webcal:// link from a school, sports team or holiday list. It's view-only and is checked every 15 minutes.
+- Repeating iCloud events are edited as a whole series. A single occurrence that was changed on the iPhone is shown but can only be changed there.
+
+## Family info card
+
+The **Info** page has the family's Wi-Fi (with a QR code guests can scan with their phone camera to join), home address, contacts (emergency, family, doctors, dentist, school, work, vet), each person's medical notes (allergies, medications, conditions, blood type) and free notes. Any grown-up can edit it from a phone or computer.
+
+Everyone signed in can see it, and so can kiosk screens: the Info page is on every kiosk screen, and you can add the **Guest Wi-Fi** widget (it shows a network labelled "Guest" if there is one) to Home.
+
 ## Cameras (UniFi Protect)
 
 FamilyHub can show your UniFi Protect cameras on Home and pop up the doorbell camera when someone rings. It uses the official **Protect Integration API**, which needs Protect 5.3 or newer.
@@ -492,10 +534,19 @@ The session secret and encryption key are generated on first start and kept in t
 
 ## Backups and restore
 
-Back up **both** of these. Without the keys file, saved secrets and Google sign-ins can't be decrypted.
+FamilyHub backs itself up **every night** (3:15 am by default) to the `backups` folder next to `docker-compose.yml` (`~/FamilyHub/backups`) and keeps the last 14. Each `familyhub-*.tar.gz` file holds the database **and** the secret keys file (stored passwords and Google sign-ins are encrypted with it), so keep the backups private.
 
-- the database, from the `familyhub-db` volume
-- the keys file, from the `familyhub-data` volume
+In **Settings → App settings → Backups** a head of household can:
+
+- **Back up now**, change the time or how many to keep,
+- **Download** a backup (copy it to another computer or cloud storage now and then, so a dead disk can't take the backups with it),
+- **Upload** a backup from another server, and
+- **Restore** one (type RESTORE to confirm). A safety copy of the current data is made first, then FamilyHub restarts with the restored data.
+
+If the page says it can't write to the backups folder, run `sudo chown -R 1000:1000 ~/FamilyHub/backups` on the server.
+
+<details>
+<summary>Doing it by hand instead</summary>
 
 ```bash
 cd ~/FamilyHub
@@ -512,6 +563,7 @@ docker compose up -d app
 docker compose cp ./familyhub-secrets-YYYY-MM-DD.json app:/data/secrets.json
 docker compose restart app
 ```
+</details>
 
 ## Security notes
 
@@ -559,20 +611,18 @@ web/src
 
 ### Roadmap
 
-Planned next, in this order:
+Planned next:
 
-1. **Reward balances:** approved chores add money as well as points to each child's balance, and kids can redeem rewards the parents set up. (Parent approval with email, text and push notifications is done; see above.)
-2. **More calendars.**
-   - **Apple iCloud Calendar**, two-way, using an app-specific password.
-   - **Subscribing to any .ics link** (school, sports, holidays), read-only.
-3. **FamilyHub OS all-in-one** and the other items on the [FamilyHub OS to-do list](os/README.md#to-do).
+1. **FamilyHub OS all-in-one** and the other items on the [FamilyHub OS to-do list](os/README.md#to-do).
+2. A family message board.
+3. An iPhone app.
 
 Other ideas:
 
 - A family message board.
 - Instant Google sync using Google's push notifications.
 - **Samsung Calendar:** Samsung has no public calendar API. Its calendar already shows Google (and Outlook) calendars, so events you sync to Google appear there.
-- **Acorns Early:** Acorns has no public API for sending money, so FamilyHub can't add money to a child's Acorns Early account automatically. The reward balance will show what each child has earned, so a parent can make the transfer in the Acorns app.
+- **Acorns Early:** Acorns has no public API for sending money, so FamilyHub can't add money to a child's Acorns Early account automatically. The reward balance shows what each child has earned in dollars; after moving the money in the Acorns app, record it with **Bonus or payout → Paid out**.
 
 ## License
 

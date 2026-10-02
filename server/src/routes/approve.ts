@@ -7,6 +7,7 @@ import { Request, Response, Router } from 'express';
 import { one } from '../db';
 import { hashToken } from '../devices';
 import { getSetting } from '../settings';
+import { redemptionByToken, reviewRedemption } from '../rewards';
 import { reviewCompletion } from './chores';
 
 export const approveRouter = Router();
@@ -38,6 +39,41 @@ async function load(token: string) {
 
 const expired = (d: Date) => Date.now() - new Date(d).getTime() > MAX_AGE_DAYS * 86400_000;
 const appLink = () => `<p class="muted"><a href="/chores">Open ${esc(getSetting('appName'))}</a></p>`;
+
+// ---- Reward requests (/approve/reward/<token>) ----
+approveRouter.get('/reward/:token', async (req: Request, res: Response) => {
+  const r = await redemptionByToken(String(req.params.token));
+  if (!r || r.status !== 'pending' || expired(r.requested_at)) {
+    return page(res, 'Already handled', `<div class="big">✅</div><h1>Nothing to approve</h1><p class="muted">This reward was already approved or denied, or the link has expired.</p>${appLink()}`, 404);
+  }
+  const want = String(req.query.a ?? '');
+  const who = esc(r.name?.split(' ')[0] ?? 'Someone');
+  const t = esc(String(req.params.token));
+  page(
+    res,
+    'Approve reward?',
+    `<div class="big">${esc(r.emoji ?? '🎁')}</div><h1>${who} wants “${esc(r.title)}”</h1>
+<p class="muted">It costs ${r.cost} point${r.cost === 1 ? '' : 's'}.</p>
+<form method="post"><button class="ok ${want === 'deny' ? 'dim' : ''}" formaction="${esc(req.baseUrl)}/reward/${t}/approve">Approve</button>
+<button class="no ${want === 'approve' ? 'dim' : ''}" formaction="${esc(req.baseUrl)}/reward/${t}/deny">Not now</button></form>`,
+  );
+});
+
+approveRouter.post('/reward/:token/:action', async (req: Request, res: Response) => {
+  const action = String(req.params.action);
+  if (action !== 'approve' && action !== 'deny') return res.status(404).end();
+  const r = await redemptionByToken(String(req.params.token));
+  const wantsHtml = (req.headers.accept ?? '').includes('text/html');
+  if (!r || r.status !== 'pending' || expired(r.requested_at)) {
+    if (!wantsHtml) return res.status(409).json({ ok: false, message: 'Already handled or expired' });
+    return page(res, 'Already handled', `<div class="big">✅</div><h1>Already handled</h1><p class="muted">Someone already approved or denied this reward.</p>${appLink()}`, 409);
+  }
+  await reviewRedemption({ tokenHash: hashToken(String(req.params.token)) }, action === 'approve', null);
+  if (!wantsHtml) return res.json({ ok: true, status: action === 'approve' ? 'approved' : 'rejected' });
+  const who = esc(r.name?.split(' ')[0] ?? 'They');
+  if (action === 'approve') page(res, 'Approved', `<div class="big">🎉</div><h1>Approved!</h1><p class="muted">${who} gets “${esc(r.title)}” (${r.cost} points).</p>${appLink()}`);
+  else page(res, 'Not now', `<div class="big">↩️</div><h1>Not this time</h1><p class="muted">${who}'s points for “${esc(r.title)}” are back.</p>${appLink()}`);
+});
 
 approveRouter.get('/:token', async (req: Request, res: Response) => {
   const c = await load(String(req.params.token));

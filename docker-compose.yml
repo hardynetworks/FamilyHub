@@ -12,6 +12,7 @@ services:
       DATABASE_URL: postgres://familyhub:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/familyhub
     volumes:
       - familyhub-data:/data   # auto-generated session/encryption keys
+      - ./backups:/backups     # nightly backups (Settings -> App settings -> Backups)
     ports:
       - "${KINBOARD_PORT:-3000}:3000"
     depends_on:
