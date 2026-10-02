@@ -1,0 +1,37 @@
+name: Type check
+
+# Strict TypeScript check of the server and the web app on every push.
+# (The Docker image build emits code even when types are wrong; this catches mistakes.)
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        working-directory: server
+        run: npm install --no-audit --no-fund
+      - name: Type check
+        working-directory: server
+        run: npx tsc -p tsconfig.json --noEmit
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        working-directory: web
+        run: npm install --no-audit --no-fund
+      - name: Type check
+        working-directory: web
+        run: npx tsc --noEmit
